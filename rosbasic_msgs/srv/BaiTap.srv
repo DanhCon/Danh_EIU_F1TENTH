@@ -1,0 +1,16 @@
+# Request
+int64 a
+int64 b
+float64 distance_odom
+float64 distance_lidar
+
+
+
+
+---
+# Response
+int64 sum
+string msg
+bool result
+string object_detection 
+string message

@@ -1,0 +1,8 @@
+ # /**: cách viết sao cũng đc theay thế cho tên node phia 
+
+distance: # tên node
+  ros__parameters:
+    distance_odom: 10.0
+    distance _lidar: 4.0
+    x1 : 111.0
+    y1 : 20.0

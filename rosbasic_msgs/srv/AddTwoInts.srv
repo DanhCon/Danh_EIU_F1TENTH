@@ -1,0 +1,13 @@
+# Request
+int64 a
+int64 b
+
+float64 x1
+float64 y1
+
+---
+# Response
+int64 sum
+string ok
+
+float64 dis
