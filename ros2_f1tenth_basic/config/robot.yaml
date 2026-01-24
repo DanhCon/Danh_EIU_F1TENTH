@@ -1,0 +1,5 @@
+
+async_client:        # 1. Tên node (phải khớp với tên node khi run/launch)
+  ros__parameters:   # 2. TỪ KHÓA BẮT BUỘC (không được sai chính tả)
+    so_a: 10 # 3. Các tham số nằm thụt vào trong
+    so_b: 5

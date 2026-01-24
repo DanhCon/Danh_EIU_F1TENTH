@@ -1,16 +1,30 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>ros2_f1tenth_basic</name>
+  <name>motor_control</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="adt@todo.todo">adt</maintainer>
+  <maintainer email="hochochoc9y@gmail.com">danh</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <exec_depend>example_interfaces</exec_depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclpy</depend>
+  <depend>dynamixel_sdk</depend>
+  <depend>rcutils</depend>
+  <depend>tf2_ros</depend>
+  <depend>robot_localization</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+  <exec_depend>tf_transformations</exec_depend>
+  
 
   <export>
     <build_type>ament_cmake</build_type>

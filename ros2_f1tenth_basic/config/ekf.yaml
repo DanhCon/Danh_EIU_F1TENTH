@@ -1,0 +1,117 @@
+# Tên node của bộ lọc EKF
+ekf_filter_node:
+  ros__parameters:
+
+    # === TẦN SỐ VÀ TIMEOUT ===
+    # Tần số chạy của bộ lọc (Hz).
+    frequency: 50.0
+
+    # Thời gian chờ (giây) trước khi coi một cảm biến là "mất kết nối".
+    sensor_timeout: 0.1
+
+    # === CHẾ ĐỘ 2D ===
+    # RẤT QUAN TRỌNG: Đặt là 'true' cho robot chạy trên mặt phẳng (như TurtleBot3).
+    # Nó sẽ ép Z, roll, pitch về 0, giúp robot không bị "lật" do nhiễu IMU.
+    two_d_mode: true
+
+    # === CÁC KHUNG TỌA ĐỘ (TF FRAMES) ===
+    # Tên các frame. Hãy đảm bảo chúng khớp với hệ thống của bạn.
+    map_frame: map              # Thường do AMCL cung cấp (bỏ qua nếu không dùng map)
+    odom_frame: odom            # Frame odometry (do EKF này publish)
+    base_link_frame: base_footprint # Frame gốc của robot
+    world_frame: odom           # EKF này sẽ cung cấp transform odom -> base_footprint
+
+    # === PUBLISH GÌ? ===
+    # Publish transform từ 'odom_frame' tới 'base_link_frame'
+    publish_tf: true
+
+    # === CẢM BIẾN 1: ODOMETRY TỪ BÁNH XE ===
+    # Đây là topic /odom_danh/odom mà node của bạn đang publish
+    odom0: /odom_danh/odom
+    
+    # Kiểu message
+    odom0_config:
+    # [ X,  Y,  Z,    <-- Vị trí (Pose)
+    #   R,  P,  YAW,  <-- Hướng (Pose)
+    #  VX, VY, VZ,    <-- Vận tốc thẳng (Twist)
+    # VROLL,VPITCH,VYAW, <-- Vận tốc góc (Twist)
+    #  AX, AY, AZ ]   <-- Gia tốc (Accel)
+    #
+    # Chúng ta chỉ "tin" vận tốc X và vận tốc góc Z từ bánh xe.
+    # Chúng ta KHÔNG tin vị trí X, Y (vì nó trôi) và KHÔNG tin Yaw (vì IMU tốt hơn).
+      [ false, false, false,  # X, Y, Z (Pose)
+        false, false, false,  # Roll, Pitch, Yaw (Pose)
+        true,  false, false,  # vX, vY, vZ (Twist)
+        false, false, true,   # vRoll, vPitch, vYaw (Twist)
+        false, false, false ] # aX, aY, aZ
+    
+    # Kích thước hàng đợi
+    odom0_queue_size: 10
+
+    # 'false' vì message Odometry đã chứa cả pose và twist (không phải vi phân)
+    odom0_differential: false
+
+
+    # === CẢM BIẾN 2: IMU ===
+    # Đây là topic IMU mà TurtleBot3 publish
+    imu0: /imu
+
+    imu0_config:
+    # [ X,  Y,  Z,
+    #   R,  P,  YAW,  <-- Hướng (Pose)
+    #  VX, VY, VZ,
+    # VROLL,VPITCH,VYAW, <-- Vận tốc góc (Twist)
+    #  AX, AY, AZ ]
+    #
+    # Từ IMU, chúng ta "tin" tuyệt đối vào Hướng (Yaw) và Vận tốc góc (vYaw).
+    # Chúng ta cũng tin vào Gia tốc (aX) để giúp phát hiện trượt.
+    # (Roll và Pitch bị bỏ qua vì 'two_d_mode: true')
+      [ false, false, false,  # X, Y, Z
+        false, false, true,   # Roll, Pitch, YAW (Pose) <-- RẤT QUAN TRỌNG
+        false, false, false,  # vX, vY, vZ
+        false, false, true,   # vRoll, vPitch, vYAW (Twist) <-- RẤT QUAN TRỌNG
+        true,  false, false,  # aX, aY, aZ
+      ]
+
+    imu0_queue_size: 10
+    
+    # 'false' vì IMU cung cấp orientation (hướng) tuyệt đối.
+    imu0_differential: false 
+
+    # === CÁC MA TRẬN NHIỄU (TUNING NÂNG CAO) ===
+    # Bạn có thể để mặc định ban đầu
+    # Ma trận nhiễu của quá trình (Process Noise Covariance)
+    process_noise_covariance: [
+      1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 1e-6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 1e-6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 1e-6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 1e-6, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-6, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-6, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-6]
+
+    # Ma trận nhiễu ước tính ban đầu (Initial Estimate Covariance)
+    initial_estimate_covariance: [
+      1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-9]
