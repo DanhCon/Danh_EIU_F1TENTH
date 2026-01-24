@@ -24,7 +24,7 @@ class PurePursuit(Node):
         super().__init__("pure_pursuit_node")
         
         # --- CẤU HÌNH XE VÀ THUẬT TOÁN ---
-        self.L = 0.0    # Chiều dài cơ sở (Wheelbase)
+        self.L = 0.399999    # Chiều dài cơ sở (Wheelbase)
         self.kq = 1.0    # Hệ số Gain góc lái
         
         # --- CẤU HÌNH ADAPTIVE LOOKAHEAD (MỚI) ---
