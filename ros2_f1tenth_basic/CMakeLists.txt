@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(motor_control)
+project(ros2_f1tenth_basic)
 
 find_package(ament_cmake REQUIRED)
 find_package(dynamixel_sdk REQUIRED)
