@@ -10,6 +10,7 @@ find_package(sensor_msgs REQUIRED)
 # find_package(ackermann_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(ackermann_msgs REQUIRED)
 
 
 
@@ -48,6 +49,10 @@ add_executable(main_test
 add_executable(talker src/pub_cpp.cpp)
 ament_target_dependencies(talker rclcpp std_msgs)
 
+add_executable(cpp_pub_sub src/review_cpp_pub_sub.cpp)
+ament_target_dependencies(cpp_pub_sub rclcpp std_msgs sensor_msgs ackermann_msgs)
+
+
 # 3. Định nghĩa file chạy cho Subscriber
 add_executable(listener src/sub_cpp.cpp)
 ament_target_dependencies(listener rclcpp std_msgs)
@@ -81,6 +86,7 @@ target_link_libraries(main_test ${dynamixel_sdk_LIBRARIES})
 install(TARGETS main_test talker
   listener
   robot_news
+  cpp_pub_sub
 
 
 DESTINATION lib/${PROJECT_NAME})
