@@ -27,6 +27,8 @@ install(PROGRAMS
   src/pp_basic.py
   src/stanley.py
   src/optimized_pp.py
+  src/test.py
+  src/test_vi.py
 
 
 
