@@ -18,7 +18,7 @@ from tf2_ros import Buffer, TransformListener, TransformException
 import tf2_geometry_msgs
 from rclpy.duration import Duration
 from geometry_msgs.msg import PointStamped
-
+from sensor_msgs.msg import LaserScan
 class PurePursuit(Node):
     def __init__(self):
         super().__init__("pure_pursuit_node")
@@ -33,11 +33,24 @@ class PurePursuit(Node):
         self.min_lookahead = 0.4     # l_min (mét): Khoảng cách tsối thiểu (để không lắc ở tốc độ thấp)
         self.max_lookahead = 4.0     # l_max (mét): Khoảng cách tối đa (để không bị mù ở tốc độ cao)
         self.Ld = self.min_lookahead # Khởi tạo giá trị mặc định
+        # --- CẤU HÌNH TRÁNH VẬT CẢN (MỚI) ---
+        self.car_width = 0.35      # Bề ngang xe (mét)
+        self.safety_margin = 0.15  # Khoảng cách an toàn thêm vào mỗi bên
+        self.check_width = self.car_width + 2 * self.safety_margin # Độ rộng hành lang
+        self.scan_data = None      # Biến lưu dữ liệu Lidar mới nhất
+        
+        # Danh sách các độ dịch chuyển (ưu tiên: 0 -> trái nhẹ -> phải nhẹ -> trái mạnh...)
+        # Đơn vị: mét (trong hệ tọa độ xe)
+        self.shifts = [0.0, 0.3, -0.3, 0.5, -0.5, 0.7, -0.7]
+
+        # --- SUBSCRIBER MỚI ---
+        # Đăng ký nhận dữ liệu Lidar
+        self.sub_scan = self.create_subscription(LaserScan, "/scan", self.scan_callback, 10)
 
 
 
         self.last_curvature = 0.0
-        self.Kd = 2.0
+        self.Kd = 0.0
         # -----------------------------------------
 
         # Cấu hình vận tốc (Profile tuyến tính đơn giản)
@@ -76,6 +89,88 @@ class PurePursuit(Node):
             self.get_logger().error(f"Khong tim thay file CSV tai: {csv_path}")
 
         self.get_logger().info(f"Pure Pursuit Adaptive khoi dong. T_look={self.lookahead_time}s")
+    def scan_callback(self, msg: LaserScan):
+        self.scan_data = msg    
+    def is_path_blocked(self, target_x, target_y):
+        """
+        Kiểm tra xem hành lang từ (0,0) đến (target_x, target_y) có vật cản không.
+        Sử dụng dữ liệu self.scan_data.
+        """
+        if self.scan_data is None:
+            return False # Không có dữ liệu thì coi như thoáng (hoặc True tùy an toàn)
+
+        # Góc tới điểm đích (trong hệ tọa độ xe)
+        target_angle = math.atan2(target_y, target_x)
+        dist_to_target = math.hypot(target_x, target_y)
+
+        # Duyệt qua các tia laser
+        # Lưu ý: Duyệt hết 1080 tia sẽ chậm, ta chỉ duyệt các tia trong góc quét phía trước
+        ranges = np.array(self.scan_data.ranges)
+        angle_min = self.scan_data.angle_min
+        angle_inc = self.scan_data.angle_increment
+        
+        # Chỉ check góc -90 đến +90 độ trước mặt xe để tối ưu
+        start_index = int((-math.pi/2 - angle_min) / angle_inc)
+        end_index = int((math.pi/2 - angle_min) / angle_inc)
+        
+        # Clip index để không lỗi mảng
+        start_index = max(0, start_index)
+        end_index = min(len(ranges), end_index)
+
+        # Lấy mảng con (subset) phía trước
+        front_ranges = ranges[start_index:end_index]
+        
+        # Tạo mảng góc tương ứng
+        indices = np.arange(start_index, end_index)
+        angles = angle_min + indices * angle_inc
+
+        # --- CHUYỂN ĐỔI POLAR -> CARTESIAN (X, Y) ---
+        # x: hướng tới trước, y: hướng sang trái
+        # Lọc bỏ các điểm vô cực (inf) hoặc quá xa
+        valid_mask = (front_ranges < dist_to_target) & (front_ranges > 0.05)
+        
+        # Nếu không có điểm nào gần hơn đích -> Đường thoáng
+        if not np.any(valid_mask):
+            return False
+
+        valid_ranges = front_ranges[valid_mask]
+        valid_angles = angles[valid_mask]
+
+        points_x = valid_ranges * np.cos(valid_angles)
+        points_y = valid_ranges * np.sin(valid_angles)
+
+        # --- KIỂM TRA HÀNH LANG (CORRIDOR CHECK) ---
+        # Ta xoay hệ tọa độ sao cho trục X trùng với đường thẳng nối xe -> đích
+        # Để đơn giản hóa: Tính khoảng cách từ điểm Lidar tới đoạn thẳng (0,0)->(target)
+        
+        # Vector chỉ phương của đường đi (đã chuẩn hóa)
+        line_vec = np.array([target_x, target_y])
+        line_len = np.linalg.norm(line_vec)
+        line_unit_vec = line_vec / line_len
+
+        # Vector pháp tuyến (vuông góc) để đo khoảng cách ngang (Cross Product 2D)
+        # Khoảng cách từ điểm P đến đường thẳng nối O->Target: |det([Target, P])| / length
+        
+        # Công thức khoảng cách từ điểm (px, py) đến đoạn thẳng (0,0)-(tx, ty):
+        # cross_product = px*ty - py*tx
+        cross_products = points_x * target_y - points_y * target_x
+        lateral_distances = np.abs(cross_products) / line_len
+
+        # Điều kiện va chạm:
+        # 1. Điểm nằm trong chiều dài đoạn đường (projected length < dist_to_target)
+        # 2. Điểm nằm trong chiều rộng hành lang (lateral_dist < check_width / 2)
+        
+        dot_products = points_x * target_x + points_y * target_y
+        projected_lengths = dot_products / line_len
+        
+        collision_mask = (projected_lengths > 0) & \
+                         (projected_lengths < line_len) & \
+                         (lateral_distances < (self.check_width / 2.0))
+
+        if np.any(collision_mask):
+            return True # Có va chạm
+        
+        return False
 
     def odom_callback(self, msg: Odometry):
         # --- BƯỚC 0: TÍNH TOÁN ADAPTIVE LOOKAHEAD (MỚI) ---
