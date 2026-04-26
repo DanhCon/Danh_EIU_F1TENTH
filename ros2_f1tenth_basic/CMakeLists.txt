@@ -29,6 +29,7 @@ install(PROGRAMS
   src/optimized_pp.py
   src/test.py
   src/test_vi.py
+  src/MPC/mpc_basic_kinematic.py
 
 
 
