@@ -21,21 +21,21 @@ class BasicDisparityExtender(Node):
         self.fov_min             = math.radians(-120.0)
         self.fov_max             = math.radians(120.0)
         self.car_width           = 0.6
-        self.disparity_threshold = 0.06
+        self.disparity_threshold = 0.07
         self.safe_dist           = 0.4
         self.prev_angle          = 0.0
         self.SMOOTH_ALPHA        = 0.35
 
         # --- THAM SỐ MỚI: AN TOÀN ---
         # Emergency brake: nếu vùng ±FRONT_CONE phía trước có ray < BRAKE_DIST → dừng hẳn
-        self.FRONT_CONE_DEG  = 30.0          # ±30° tính từ thẳng trước
+        self.FRONT_CONE_DEG  = 10.0          # ±30° tính từ thẳng trước
         self.BRAKE_DIST      = 0.5           # (m) dừng khẩn cấp
         self.CREEP_DIST      = 0.8           # (m) chạy chậm
         self.CREEP_SPEED     = 0.5           # (m/s) tốc độ bò khi gần tường phía trước
 
         # Gap tại boundary FOV (-120° hoặc +120°) thường là khoảng trống hông/sau xe
         # → loại bỏ nếu angle trung tâm của gap lệch quá xa khỏi 0°
-        self.MAX_GAP_CENTER_ANGLE = math.radians(75.0)  # loại gap nếu center > 75° khỏi trục thẳng
+        self.MAX_GAP_CENTER_ANGLE = math.radians(80.0)  # loại gap nếu center > 75° khỏi trục thẳng
 
         # Deadzone góc lái nhỏ → bỏ để tránh xe đi thẳng khi cần rẽ
         self.ANGLE_DEADZONE  = math.radians(1.5)
@@ -214,7 +214,7 @@ class BasicDisparityExtender(Node):
 
         sub   = ranges[start_idx: end_idx + 1]
         max_v = max(sub)
-        thr   = max_v * 0.5      # ngưỡng cao hơn → chỉ lấy vùng thực sự rộng
+        thr   = max_v * 0.45      # ngưỡng cao hơn → chỉ lấy vùng thực sự rộng
 
         best_s = best_e = 0
         best_l = 0
@@ -282,9 +282,9 @@ class BasicDisparityExtender(Node):
         if front_clear < self.CREEP_DIST:
             speed = self.CREEP_SPEED
         elif abs(smooth_angle) < math.radians(10.0):
-            speed = 4.0
+            speed = 5.0
         elif abs(smooth_angle) < math.radians(20.0):
-            speed = 3.5
+            speed = 3.0
         else:
             speed = 2.0
 
