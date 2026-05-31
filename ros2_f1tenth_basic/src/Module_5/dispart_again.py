@@ -86,9 +86,9 @@ class BasicDispartiyExtendeer(Node):
                             filtered[j] = 0.0
                 else:
                     start = max(0, i - bubble_rays)
-                    end = i+ 1
+                    end = i + 1
                     for j in range(start,end):
-                        if original[j] > original[end]: # tai sao
+                        if original[j] > original[end -1 ]: # tai sao
                             filtered[j] = 0.0
         return filtered
     def find_best_gap(self,ranges, angle_min, angle_increment):
