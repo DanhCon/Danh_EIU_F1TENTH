@@ -31,6 +31,7 @@ install(PROGRAMS
   src/test_vi.py
   src/MPC/mpc_basic_kinematic.py
   src/MPC/mpc_LPV.py
+  src/MPPI/mppi_basic.py
 
 
 

@@ -95,8 +95,7 @@ class MPPIController(Node):
         # ── Nạp waypoints ─────────────────────────────────────────────
         self.waypoints = np.zeros((0, 2))
         csv_path = (
-            "/sim_ws/install/waypoint/share/waypoint"
-            "/f1tenth_waypoint_generator/racelines/f1tenth_waypoint.csv"
+            "/home/danh/ros2_ws/install/waypoint/share/waypoint/f1tenth_waypoint_generator/racelines/f1tenth_waypoint.csv"
         )
         self._load_waypoints(csv_path)
         self._publish_waypoints()
