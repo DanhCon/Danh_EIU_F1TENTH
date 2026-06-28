@@ -292,7 +292,7 @@ class MPPIController(Node):
 
         # Mô phỏng trượt (understeer) ở tốc độ cao: giảm hiệu quả đánh lái trong mô hình dự báo
         # để bộ điều khiển MPPI tự động tăng góc lái thực tế bù vào.
-        slip_factor = 1.0 / (1.0 + v * 0.15)
+        slip_factor = 1.0 / (1.0 + np.abs(v) * 0.15)
         d_eff = d * slip_factor
 
         return np.stack(
@@ -373,12 +373,13 @@ class MPPIController(Node):
         
         # Chuyển sang hiệu số có dấu để đi lùi bị tính là tiến trình âm
         backwards_mask = progress_raw > (num_wps // 2)
+        progress_raw = progress_raw.astype(np.int32)
         progress_raw[backwards_mask] -= num_wps
         
-        # Chuẩn hóa về [0, 1], thưởng nếu tiến xa hơn
-        progress_mean  = progress_raw.astype(float).mean(axis=1)  # (N,)
+        # Dùng final waypoint index thay vì mean để xe hướng đến điểm cuối
+        progress_final = progress_raw[:, -1].astype(float)
         # Đây là REWARD nên cost = -progress, dùng âm để minimize
-        progress_cost  = -progress_mean                            # (N,)
+        progress_cost  = -progress_final                            # (N,)
 
         # ── 3. Heading cost (bám hướng tiếp tuyến) ──────────────────
         target_hdgs  = local_hdgs[min_wi]                          # (N,T)
@@ -386,6 +387,8 @@ class MPPIController(Node):
         heading_err  = (heading_err + np.pi) % (2.0 * np.pi) - np.pi
         # Không clip heading_err ở [-pi/2, pi/2] nữa nhằm giữ lại độ dốc thông tin toàn dải [-pi, pi],
         # giúp MPPI tự động quay đầu xe lại khi bị xoay ngược 180 độ.
+        # Heading cost: khi lùi (is_reversing), KHÔNG phạt hướng
+        w_hdg_eff = 0.0 if self.is_reversing else self.w_heading
         heading_cost = np.sum(heading_err ** 2, axis=1) / T        # (N,)
 
         # ── 4. Speed cost ────────────────────────────────────────────
@@ -441,27 +444,25 @@ class MPPIController(Node):
                 mask      = (min_dists < self.danger_radius) & (min_dists >= self.robot_radius)
                 soft_cost = np.sum(gauss * mask, axis=1) / T                 # (N,)
                 
-                # obs_cost kết hợp: phạt va chạm nhị phân (100.0) + số bước va chạm (10.0) + soft cost (0.1)
-                # Học theo mppi_nhat: gỡ bỏ hoàn toàn np.clip để điểm phạt đạt mức cực đại (50,000+)
-                obs_cost = collision_any * 100.0 + col_cost * 10.0 + 0.1 * soft_cost
+                # obs_cost kết hợp: chuẩn hóa về [0, ~2.1] để tránh scale mismatch
+                obs_cost = (collision_any * 1.0 + col_cost / float(self.horizon) + soft_cost / float(self.horizon))
 
         # ── 7. Terminal cost (tập trung tại bước cuối cùng t=T - BUG-F) ──
         final_pts = state_rollouts[:, -1, :2]   # (N, 2)
         
-        # Phạt lệch đường cuối horizon
+        # FIX: tách weight ra ngoài để không bị double-weight
         dx_f = final_pts[:, 0:1] - local_wps[None, :, 0]
         dy_f = final_pts[:, 1:2] - local_wps[None, :, 1]
         dist_f = np.sqrt(dx_f**2 + dy_f**2)
         min_f = dist_f.min(axis=1)             # (N,)
-        
-        terminal_cost = 3.0 * (self.w_track * min_f**2)
+        terminal_cost = 3.0 * self.w_track * min_f**2
 
         # ── Lưu thống kê log ─────────────────────────────────────────
         self._dbg_track    = float(np.mean(self.w_track    * track_cost))
         # progress: hiện max cho thấy rollout tốt nhất tiến được bao xa
-        self._dbg_progress = float(np.max(progress_mean))   # waypoints / horizon
+        self._dbg_progress = float(np.max(progress_final))   # waypoints / horizon
         self._dbg_speed    = float(np.mean(self.w_speed    * speed_cost))
-        self._dbg_heading  = float(np.mean(self.w_heading  * heading_cost))
+        self._dbg_heading  = float(np.mean(w_hdg_eff       * heading_cost))
         self._dbg_obs      = float(np.mean(self.w_obstacle * obs_cost))
         self._dbg_n_obs    = n_obs_filtered
 
@@ -478,7 +479,7 @@ class MPPIController(Node):
             self.w_progress * progress_cost +  # âm → giảm tổng cost khi tiến xa
             self.w_control  * smooth_cost   +
             self.w_speed    * speed_cost    +
-            self.w_heading  * heading_cost  +
+            w_hdg_eff       * heading_cost  +
             self.w_obstacle * obs_cost      +
             terminal_cost
         )
@@ -548,14 +549,17 @@ class MPPIController(Node):
             min_obs_dist = float(np.min(obs_dists))
 
         # ── Hysteresis State cho việc đi lùi (Tránh dao động tiến/lùi liên tục) ──
+        HYSTERESIS_TIME = 1.2
         if not self.is_reversing:
             if self.forward_min_obs_dist < 0.8:
                 self.is_reversing = True
+                self._reverse_end_time = self.get_clock().now().nanoseconds / 1e9 + HYSTERESIS_TIME
                 self.get_logger().warn(
                     f"[SAFETY] Cận kề va chạm phía trước (forward_obs={self.forward_min_obs_dist:.2f}m < 0.8m) -> Kích hoạt chế độ lùi tự động."
                 )
         else:
-            if self.forward_min_obs_dist > 1.2:
+            now_s = self.get_clock().now().nanoseconds / 1e9
+            if now_s > getattr(self, '_reverse_end_time', 0) and self.forward_min_obs_dist > 1.2:
                 self.is_reversing = False
                 self.get_logger().info(
                     f"[SAFETY] Đã lùi ra khoảng cách an toàn phía trước (forward_obs={self.forward_min_obs_dist:.2f}m > 1.2m) -> Trở lại chế độ tiến."
@@ -588,9 +592,8 @@ class MPPIController(Node):
                 span = max(0.2, safe_braking_dist - min_safe_dist)
                 obs_speed_factor = np.clip((self.forward_min_obs_dist - min_safe_dist) / span, 0.0, 1.0)
         
-        # Tốc độ an toàn tối thiểu khi tránh chướng ngại vật gắt là 0.8 m/s
-        min_speed_obs = 0.8
-        target_speed = min_speed_obs + (target_speed - min_speed_obs) * obs_speed_factor
+        # Bỏ sàn cứng, cho phép xe dừng hoàn toàn nếu vật cản quá gần
+        target_speed = max(0.0, target_speed * obs_speed_factor)
 
         # Nếu mất dữ liệu LiDAR quá 0.5s, giảm target speed để an toàn
         current_target_speed = 0.5 if lidar_lost else target_speed
@@ -609,7 +612,7 @@ class MPPIController(Node):
         # ── Unstuck safety guard ─────────────────────────────────
         # Nếu xe đang dừng/chạy rất chậm nhưng đường thoáng phía trước, mà nominal control bị kẹt ở mức thấp
         # → reset nominal speed về current_target_speed để kích hoạt lại xe nhanh chóng
-        if v_cur < 0.15 and self.forward_min_obs_dist > 1.5 and self.nominal_control[0, 0] < 0.5:
+        if not self.is_reversing and v_cur < 0.15 and self.forward_min_obs_dist > 1.5 and self.nominal_control[0, 0] < 0.5:
             self.get_logger().warn(
                 f"[GUARD] Xe dang dung nhung duong thoang (forward_obs={self.forward_min_obs_dist:.2f}m) "
                 f"→ reset nominal speed ve {current_target_speed:.2f} m/s",
@@ -668,11 +671,9 @@ class MPPIController(Node):
         # 6. Cập nhật phân phối MPPI
         beta    = float(np.min(costs))
         
-        # Adaptive Lambda (BUG-C)
-        cost_std = float(np.std(costs))
-        effective_lambda = max(self.lambda_, cost_std / 5.0)
-        
-        weights = np.exp(-(costs - beta) / effective_lambda)
+        # Cập nhật phân phối MPPI (thêm chuẩn hóa cost tránh softmax collapse)
+        costs_shifted = costs - float(np.min(costs))
+        weights = np.exp(-costs_shifted / self.lambda_)
         w_sum   = float(np.sum(weights))
         if w_sum < 1e-8:
             weights = np.ones(self.num_samples) / self.num_samples
@@ -704,14 +705,18 @@ class MPPIController(Node):
                 throttle_duration_sec=0.2
             )
             opt_speed = 0.0
-            self.nominal_control[:, 0] = 0.0
+            # KHÔNG modify nominal_control ở đây để tránh hỏng warm-start
             self.is_reversing = True
+            self._reverse_end_time = self.get_clock().now().nanoseconds / 1e9 + 1.2
+
+        # FIX: lưu last step trước khi shift
+        last_steer = float(self.nominal_control[-1, 1])
 
         # ── Receding horizon shift (warm-start) ─────────────────────
         # Dịch nominal_control 1 bước về trước
         self.nominal_control = np.roll(self.nominal_control, -1, axis=0)
         self.nominal_control[-1, 0] = current_target_speed
-        self.nominal_control[-1, 1] = self.nominal_control[-2, 1]  # Giữ góc lái áp chót
+        self.nominal_control[-1, 1] = last_steer  # Giữ góc lái áp chót
 
         # 8. Log debug & hiệu năng chi tiết
         execution_time = (self.get_clock().now() - start_time).nanoseconds / 1e6
@@ -750,7 +755,7 @@ class MPPIController(Node):
             
             log_msg = (
                 f"[MPPI] {execution_time:.0f}ms | v={v_cur:.2f} → cmd={opt_speed:.2f} steer={opt_steer:.3f} | "
-                f"n_eff={n_eff:.1f}/{self.num_samples} | cost_std={cost_std:.1f} | eff_lam={effective_lambda:.1f}\n"
+                f"n_eff={n_eff:.1f}/{self.num_samples} | cost_std={cost_std:.1f} | eff_lam={self.lambda_:.1f}\n"
                 f"  cost min={beta:.1f} mean={np.mean(costs):.1f} ratio={cost_ratio:.3f} | "
                 f"min_obs={min_obs_dist:.2f}m | wp=#{nearest_idx} (dist={dist_to_wp:.2f}m, err={np.degrees(current_heading_err):.1f}°)\n"
                 f"  MEAN: track={self._dbg_track:.1f} prog={self.w_progress * np.mean(self._current_progress_cost):.1f} "
@@ -795,10 +800,12 @@ class MPPIController(Node):
         for t in range(self.horizon):
             v, d   = self.nominal_control[t]
             x, y, th = traj[t]
+            slip_factor = 1.0 / (1.0 + np.abs(v) * 0.15)
+            d_eff = d * slip_factor
             traj[t + 1] = [
                 x  + v * np.cos(th) * self.dt,
                 y  + v * np.sin(th) * self.dt,
-                th + (v * np.tan(d) / self.L) * self.dt,
+                th + (v * np.tan(d_eff) / self.L) * self.dt,
             ]
         return traj
 
