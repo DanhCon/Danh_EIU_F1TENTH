@@ -441,13 +441,9 @@ class MPPIController(Node):
                 mask      = (min_dists < self.danger_radius) & (min_dists >= self.robot_radius)
                 soft_cost = np.sum(gauss * mask, axis=1) / T                 # (N,)
                 
-                # Chuẩn hóa obs_cost về [0, 10.0] để áp đảo progress reward khi va chạm xảy ra
-                obs_cost = np.clip(
-                    collision_any * 5.0 +
-                    (col_cost / T) * 2.0 +
-                    soft_cost * 3.0,
-                    0.0, 10.0
-                )
+                # obs_cost kết hợp: phạt va chạm nhị phân (100.0) + số bước va chạm (10.0) + soft cost (0.1)
+                # Học theo mppi_nhat: gỡ bỏ hoàn toàn np.clip để điểm phạt đạt mức cực đại (50,000+)
+                obs_cost = collision_any * 100.0 + col_cost * 10.0 + 0.1 * soft_cost
 
         # ── 7. Terminal cost (tập trung tại bước cuối cùng t=T - BUG-F) ──
         final_pts = state_rollouts[:, -1, :2]   # (N, 2)
@@ -458,15 +454,7 @@ class MPPIController(Node):
         dist_f = np.sqrt(dx_f**2 + dy_f**2)
         min_f = dist_f.min(axis=1)             # (N,)
         
-        # Phạt va chạm cuối horizon
-        terminal_obs = np.zeros(N)
-        if n_obs_filtered > 0:
-            d_obs_f = np.linalg.norm(
-                final_pts[:, None, :] - local_obs[None, :, :], axis=-1
-            ).min(axis=1)                      # (N,)
-            terminal_obs = (d_obs_f < self.danger_radius).astype(float)
-            
-        terminal_cost = 3.0 * (self.w_track * min_f**2 + self.w_obstacle * terminal_obs)
+        terminal_cost = 3.0 * (self.w_track * min_f**2)
 
         # ── Lưu thống kê log ─────────────────────────────────────────
         self._dbg_track    = float(np.mean(self.w_track    * track_cost))
