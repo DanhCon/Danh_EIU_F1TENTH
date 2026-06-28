@@ -8,7 +8,7 @@ def generate_launch_description():
     # LƯU Ý: Đảm bảo bạn đã khai báo trong setup.py để copy folder 'maps' và 'config'
     # Nếu chưa làm setup.py, bạn có thể sửa thành đường dẫn tuyệt đối '/home/danh/...' để test nhanh
     pkg_share = get_package_share_directory('build_map')
-    map_path = os.path.join(pkg_share, 'maps', 'map_fablab_new.yaml')
+    map_path = os.path.join(pkg_share, 'maps', 'map.yaml')
     amcl_config_path = os.path.join(pkg_share, 'config', 'amcl_config.yaml')
     
     return LaunchDescription([

@@ -1,0 +1,4 @@
+Invoking command in '/home/nhuypham/ros2_ws/src/waypoint/build/waypoint': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/nhuypham/ros2_ws/src/waypoint/build/waypoint -- -j12 -l12
+Invoked command in '/home/nhuypham/ros2_ws/src/waypoint/build/waypoint' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/nhuypham/ros2_ws/src/waypoint/build/waypoint -- -j12 -l12
+Invoking command in '/home/nhuypham/ros2_ws/src/waypoint/build/waypoint': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/nhuypham/ros2_ws/src/waypoint/build/waypoint
+Invoked command in '/home/nhuypham/ros2_ws/src/waypoint/build/waypoint' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/nhuypham/ros2_ws/src/waypoint/build/waypoint

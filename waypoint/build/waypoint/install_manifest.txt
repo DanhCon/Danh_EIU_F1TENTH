@@ -1,0 +1,15 @@
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/ament_index/resource_index/package_run_dependencies/waypoint
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/ament_index/resource_index/parent_prefix_path/waypoint
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/environment/ament_prefix_path.sh
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/environment/ament_prefix_path.dsv
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/environment/path.sh
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/environment/path.dsv
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/local_setup.bash
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/local_setup.sh
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/local_setup.zsh
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/local_setup.dsv
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/package.dsv
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/ament_index/resource_index/packages/waypoint
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/cmake/waypointConfig.cmake
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/cmake/waypointConfig-version.cmake
+/home/nhuypham/ros2_ws/src/waypoint/install/waypoint/share/waypoint/package.xml
