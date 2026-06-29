@@ -71,7 +71,7 @@ class MPPIController(Node):
         self.w_heading  = 15.0  # Bám hướng tiếp tuyến
 
         # Bán kính an toàn của xe (m)
-        self.robot_radius   = 0.35  # Tăng lên 0.30m (tạo lớp đệm 5cm an toàn quanh xe)
+        self.robot_radius   = 0.4  # Tăng lên 0.30m (tạo lớp đệm 5cm an toàn quanh xe)
         self.danger_radius  = 0.9  # Tăng tương ứng để khớp với robot_radius mới
 
         # Tốc độ mục tiêu lớn nhất trên đường thẳng (m/s)
@@ -79,7 +79,7 @@ class MPPIController(Node):
 
         # ── Tham số curvature-based speed profiling ─────────────────
         self.min_speed_curve = 1.8     # Tăng tốc độ tối thiểu khi vào cua gắt lên 1.8 m/s để duy trì động năng
-        self.curve_threshold = 0.35    # Ngưỡng độ cong (rad/m) bắt đầu giảm tốc (tăng từ 0.28 lên 0.35 để cho phép cua nhanh hơn)
+        self.curve_threshold = 0.5    # Ngưỡng độ cong (rad/m) bắt đầu giảm tốc (tăng từ 0.28 lên 0.35 để cho phép cua nhanh hơn)
         self.lookahead_wps   = 15      # Tăng số lượng waypoints nhìn trước lên 15 để phanh sớm trước cua từ tốc độ cao
 
         # Cửa sổ waypoint cục bộ
@@ -557,7 +557,7 @@ class MPPIController(Node):
             min_obs_dist = float(np.min(obs_dists))
 
         # ── Hysteresis State cho việc đi lùi (Tránh dao động tiến/lùi liên tục) ──
-        HYSTERESIS_TIME = 1.2
+        HYSTERESIS_TIME = 3.2
         STUCK_TIME_THRESHOLD = 0.8
         now_s = self.get_clock().now().nanoseconds / 1e9
 
@@ -626,7 +626,10 @@ class MPPIController(Node):
 
         # Nếu đang ở chế độ lùi, đặt tốc độ mục tiêu âm để dẫn dắt MPPI lùi mượt mà
         if self.is_reversing:
-            current_target_speed = -0.6
+            current_target_speed = -0.8
+            # FIX: Nếu không đè đúp nominal_control, lệnh lùi sẽ nằm ở cuối mảng (mất 1.5s mới tới lượt)
+            if self.nominal_control[0, 0] > -0.2:
+                self.nominal_control[:, 0] = -0.8
 
         # ── Giới hạn tốc độ tối đa động (Pre-dodge Braking) ──
         dynamic_max_speed = self.max_speed
