@@ -36,7 +36,7 @@ public:
         num_samples = this->get_parameter("num_samples").as_int();
         dt = this->get_parameter("dt").as_double();
         
-        lambda_ = 1.0;
+        lambda_ = 50.0;
         
         w_track = 20.0;
         w_progress = 5.0;
@@ -192,18 +192,23 @@ private:
             t = tf_buffer->lookupTransform(map_frame, msg->header.frame_id, tf2::TimePointZero);
         } catch (...) { return; }
         
+        auto& q = t.transform.rotation;
+        double tf_yaw = std::atan2(2.0*(q.w*q.z + q.x*q.y), 1.0 - 2.0*(q.y*q.y + q.z*q.z));
+        
         std::vector<Point2D> temp_obs;
-        double angle = msg->angle_min;
-        for (size_t i = 0; i < msg->ranges.size(); i += 10) {
+        double angle_step_deg = 1.0;
+        int step = std::max(1, (int)(angle_step_deg * M_PI / 180.0 / msg->angle_increment));
+        
+        for (size_t i = 0; i < msg->ranges.size(); i += step) {
+            double angle = msg->angle_min + i * msg->angle_increment;
             double r = msg->ranges[i];
-            if (std::isnormal(r) && r > 0.1 && r < 2.0) {
+            if (std::isnormal(r) && r > 0.1 && r < 3.5) {
                 double px = r * std::cos(angle);
                 double py = r * std::sin(angle);
-                double mx = t.transform.translation.x + px * std::cos(theta0) - py * std::sin(theta0);
-                double my = t.transform.translation.y + px * std::sin(theta0) + py * std::cos(theta0);
+                double mx = t.transform.translation.x + px * std::cos(tf_yaw) - py * std::sin(tf_yaw);
+                double my = t.transform.translation.y + px * std::sin(tf_yaw) + py * std::cos(tf_yaw);
                 temp_obs.push_back({mx, my});
             }
-            angle += msg->angle_increment * 10;
         }
         
         std::lock_guard<std::mutex> lock(obs_mutex);
@@ -274,7 +279,10 @@ private:
             local_hdgs.push_back(waypoint_headings[idx]);
             local_idxs.push_back(idx);
         }
-        int local_nearest_idx = 15; // Bug 2 - Logic (Saved index)
+        int local_nearest_idx = -1;
+        for (int i = 0; i < (int)local_idxs.size(); i++) {
+            if (local_idxs[i] == nearest_wp) { local_nearest_idx = i; break; }
+        }
 
         // Curvature Profiling
         double max_c = 0.0;
@@ -303,15 +311,16 @@ private:
         bool front_blocked = false;
         // TTL Check (Bug 5 - Logic)
         if (obs_stamp.nanoseconds() != 0 && (now_s - obs_stamp.seconds() < 0.5)) {
+            double braking_dist = std::max(0.8, v_cur * v_cur / 6.0 + 0.3); // v^2/(2a) + margin
             for (const auto& o : obs_snapshot) {
                 double dx = o.x - x0;
-                if (std::abs(dx) > danger_radius) continue; // Bug 1 - Perf
+                if (std::abs(dx) > std::max(danger_radius, braking_dist)) continue; 
                 double dy = o.y - y0;
-                if (std::abs(dy) > danger_radius) continue; // Bug 1 - Perf
+                if (std::abs(dy) > std::max(danger_radius, 0.35)) continue; 
                 
                 double dx_local = dx * std::cos(-theta0) - dy * std::sin(-theta0);
                 double dy_local = dx * std::sin(-theta0) + dy * std::cos(-theta0);
-                if (dx_local > 0.1 && dx_local < 1.5 && std::abs(dy_local) < 0.3) {
+                if (dx_local > 0.1 && dx_local < braking_dist && std::abs(dy_local) < 0.35) {
                     front_blocked = true;
                     break;
                 }
@@ -368,6 +377,8 @@ private:
             double smooth_cost = 0.0, speed_cost = 0.0, hdg_cost = 0.0;
             
             int global_idx = nearest_wp;
+            double prev_pert_v = nominal_control[0].v;
+            double prev_pert_s = nominal_control[0].steer;
 
             for (int t = 0; t < horizon; t++) {
                 double orig_noise_v = noise_buf[n][t].v; // Bug 1 - Math
@@ -397,10 +408,10 @@ private:
                 speed_cost += std::pow(pert_v - current_target_speed, 2);
 
                 if (t > 0) {
-                    double prev_s = std::max(-0.418, std::min(0.418, nominal_control[t-1].steer + noise_buf[n][t-1].steer));
-                    double prev_v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t-1].v + noise_buf[n][t-1].v));
-                    smooth_cost += std::pow(pert_s - prev_s, 2) + std::pow(pert_v - prev_v, 2);
+                    smooth_cost += std::pow(pert_s - prev_pert_s, 2) + std::pow(pert_v - prev_pert_v, 2);
                 }
+                prev_pert_v = pert_v;
+                prev_pert_s = pert_s;
 
                 double min_d = 999.0;
                 for (const auto& o : obs_snapshot) {
@@ -442,9 +453,12 @@ private:
 
         // Bug 5 (Logic) Update last_best_obs_cost based on best traj
         double best_obs_cost = 0.0;
-        double x_b = x0, y_b = y0;
+        double x_b = x0, y_b = y0, th_b = theta0;
         for (int t = 0; t < horizon; t++) {
-            double pert_v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v + noise_buf[best_idx][t].v));
+            double orig_v = noise_buf[best_idx][t].v;
+            double orig_s = noise_buf[best_idx][t].steer;
+            double pert_v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v + orig_v));
+            double pert_s = std::max(-0.418, std::min(0.418, nominal_control[t].steer + orig_s));
             double min_d = 999.0;
             for (const auto& o : obs_snapshot) {
                 double dx = x_b - o.x;
@@ -455,8 +469,10 @@ private:
                 if (d < min_d) min_d = d;
             }
             if (min_d < danger_radius) best_obs_cost += std::pow(danger_radius - min_d, 2);
-            x_b += pert_v * std::cos(theta0) * dt; 
-            y_b += pert_v * std::sin(theta0) * dt;
+            x_b += pert_v * std::cos(th_b) * dt; 
+            y_b += pert_v * std::sin(th_b) * dt;
+            th_b += pert_v * std::tan(pert_s) / 0.33 * dt;
+            th_b = normalize_angle(th_b);
         }
         last_best_obs_cost = best_obs_cost;
 
@@ -485,8 +501,8 @@ private:
         for (int t = 0; t < horizon - 1; t++) {
             nominal_control[t] = nominal_control[t+1];
         }
-        nominal_control[horizon-1].v = nominal_control[horizon-2].v; // Bug 6 - Logic
-        nominal_control[horizon-1].steer = nominal_control[horizon-2].steer;
+        nominal_control[horizon-1].v = current_target_speed; // Bug 6 - Logic Fix
+        nominal_control[horizon-1].steer = nominal_control[horizon-2].steer * 0.5;
     }
 
     void publish_drive(double v, double steer) {
