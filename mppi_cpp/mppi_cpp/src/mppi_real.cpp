@@ -105,7 +105,7 @@ public:
         rng = std::mt19937(rd());
 
         // Load Waypoints
-        std::string csv_path = "/sim_ws/install/waypoint/share/waypoint/f1tenth_waypoint_generator/racelines/f1tenth_waypoint.csv";
+        std::string csv_path = "/home/fablab_01/danh_pp_ws/install/waypoint/share/waypoint/f1tenth_waypoint_generator/racelines/f1tenth_waypoint.csv";
         load_waypoints(csv_path);
         publish_waypoints_marker();
         

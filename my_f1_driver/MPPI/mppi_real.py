@@ -143,7 +143,7 @@ class MPPIController(Node):
         self.waypoints          = np.zeros((0, 2))
         self.waypoint_headings  = np.zeros(0)   # Góc tiếp tuyến tại mỗi wp
         csv_path = (
-            "/sim_ws/install/waypoint/share/waypoint"
+            "/home/fablab_01/danh_pp_ws/install/waypoint/share/waypoint"
             "/f1tenth_waypoint_generator/racelines/f1tenth_waypoint.csv"
         )
         self._load_waypoints(csv_path)
