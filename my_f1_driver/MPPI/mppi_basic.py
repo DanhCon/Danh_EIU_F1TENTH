@@ -47,7 +47,7 @@ class MPPIController(Node):
         self.dt = 0.05    # Chu kỳ lấy mẫu (20 Hz)
 
         # ── Thông số MPPI ─────────────────────────────────────────────
-        self.horizon     = 25     # Số bước nhìn trước (1.25 s)
+        self.horizon     = 35     # Số bước nhìn trước (1.25 s)
         self.num_samples = 500    # Số quỹ đạo mẫu ngẫu nhiên
 
         # Độ lệch chuẩn nhiễu Gauss: [tốc độ m/s, góc lái rad]
@@ -63,7 +63,7 @@ class MPPIController(Node):
         self.min_speed = 0.0
         self.max_steer = 0.35   # ~20 độ
 
-        self.w_track    = 80.0  # Bám đường raceline chặt (tăng từ 40 để xe bám sát vạch đường khi đi cực nhanh)
+        self.w_track    = 60.0  # Bám đường raceline chặt (tăng từ 40 để xe bám sát vạch đường khi đi cực nhanh)
         self.w_progress = 1.5   # Tiến dọc đường đua (giảm để không lấn át cost tránh vật cản/bám cua)
         self.w_control  = 1.5   # Làm mịn lệnh điều khiển
         self.w_obstacle = 500.0 # Tránh vật cản (trọng số cực lớn theo mppi_nhat)
@@ -71,8 +71,8 @@ class MPPIController(Node):
         self.w_heading  = 15.0  # Bám hướng tiếp tuyến
 
         # Bán kính an toàn của xe (m)
-        self.robot_radius   = 0.30  # Tăng lên 0.30m (tạo lớp đệm 5cm an toàn quanh xe)
-        self.danger_radius  = 0.80  # Tăng tương ứng để khớp với robot_radius mới
+        self.robot_radius   = 0.35  # Tăng lên 0.30m (tạo lớp đệm 5cm an toàn quanh xe)
+        self.danger_radius  = 1.0  # Tăng tương ứng để khớp với robot_radius mới
 
         # Tốc độ mục tiêu lớn nhất trên đường thẳng (m/s)
         self.target_speed = 5.0  # Tăng tốc độ mục tiêu trên đường thẳng lên 5.0 m/s
@@ -757,7 +757,7 @@ class MPPIController(Node):
             cost_ratio = beta / (np.mean(costs) + 1e-6)
             
             log_msg = (
-                f"[MPPI] {execution_time:.0f}ms | v={v_cur:.2f} → cmd={opt_speed:.2f} steer={opt_steer:.3f} | "
+                f"[MPPI] {execution_time:.0f}ms |({1000.0/execution_time:.1f} Hz) | v={v_cur:.2f} → cmd={opt_speed:.2f} steer={opt_steer:.3f} | "
                 f"n_eff={n_eff:.1f}/{self.num_samples} | cost_std={cost_std:.1f} | eff_lam={self.lambda_:.1f}\n"
                 f"  cost min={beta:.1f} mean={np.mean(costs):.1f} ratio={cost_ratio:.3f} | "
                 f"min_obs={min_obs_dist:.2f}m | wp=#{nearest_idx} (dist={dist_to_wp:.2f}m, err={np.degrees(current_heading_err):.1f}°)\n"
@@ -923,9 +923,9 @@ class MPPIController(Node):
             marker.action = Marker.DELETE
         else:
             marker.action = Marker.ADD
-            marker.scale.x = self.robot_radius * 2.0
-            marker.scale.y = self.robot_radius * 2.0
-            marker.scale.z = self.robot_radius * 2.0
+            marker.scale.x = 0.5
+            marker.scale.y = 0.5
+            marker.scale.z = 0.5
             marker.color.r = 1.0
             marker.color.g = 0.0
             marker.color.b = 0.0
