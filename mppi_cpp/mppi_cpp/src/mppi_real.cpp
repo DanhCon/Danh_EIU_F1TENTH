@@ -86,11 +86,11 @@ public:
         tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
         tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
 
-        // Sub/Pub (Sử dụng SensorDataQoS để tương thích với mọi loại định vị)
+        // Sub/Pub
         sub_odom = this->create_subscription<nav_msgs::msg::Odometry>(
-            "/pf/pose/odom", rclcpp::SensorDataQoS(), std::bind(&MPPIController::odom_callback, this, std::placeholders::_1));
+            "/pf/pose/odom", 10, std::bind(&MPPIController::odom_callback, this, std::placeholders::_1));
         sub_laser = this->create_subscription<sensor_msgs::msg::LaserScan>(
-            "/scan", rclcpp::SensorDataQoS(), std::bind(&MPPIController::lidar_callback, this, std::placeholders::_1));
+            "/scan", 10, std::bind(&MPPIController::lidar_callback, this, std::placeholders::_1));
 
         pub_drive = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>("/drive", 10);
         pub_best_traj = this->create_publisher<visualization_msgs::msg::Marker>("/mppi_best_trajectory", 10);

@@ -30,7 +30,6 @@ from geometry_msgs.msg import Point, PointStamped
 from std_msgs.msg import Empty
 from nav_msgs.msg import Odometry
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
-from rclpy.qos import qos_profile_sensor_data
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
@@ -121,15 +120,15 @@ class MPPIController(Node):
         self.car_frame   = "base_link"
         self.map_frame   = "map"
 
-        # ── Callback groups ───────────────────────────────────────────
-        sensor_grp  = ReentrantCallbackGroup()
-        control_grp = MutuallyExclusiveCallbackGroup()
+        # ── Callback groups (PHẢI dùng self. để không bị Garbage Collected) ──
+        self.sensor_grp  = ReentrantCallbackGroup()
+        self.control_grp = MutuallyExclusiveCallbackGroup()
 
         # ── ROS 2 pub/sub (CHUYỂN TOPIC XE THẬT) ──────────────────────
-        self.sub_odom  = self.create_subscription(Odometry,  "/pf/pose/odom", self.odom_callback,  qos_profile_sensor_data, callback_group=sensor_grp)
-        self.sub_laser = self.create_subscription(LaserScan, "/scan", self.lidar_callback, qos_profile_sensor_data, callback_group=sensor_grp)
-        self.sub_clicked_point = self.create_subscription(PointStamped, "/clicked_point", self.clicked_point_callback, 10, callback_group=sensor_grp)
-        self.sub_clear_virtual = self.create_subscription(Empty, "/clear_virtual_obstacles", self.clear_virtual_obstacles_callback, 10, callback_group=sensor_grp)
+        self.sub_odom  = self.create_subscription(Odometry,  "/pf/pose/odom", self.odom_callback,  10, callback_group=self.sensor_grp)
+        self.sub_laser = self.create_subscription(LaserScan, "/scan", self.lidar_callback, 10, callback_group=self.sensor_grp)
+        self.sub_clicked_point = self.create_subscription(PointStamped, "/clicked_point", self.clicked_point_callback, 10, callback_group=self.sensor_grp)
+        self.sub_clear_virtual = self.create_subscription(Empty, "/clear_virtual_obstacles", self.clear_virtual_obstacles_callback, 10, callback_group=self.sensor_grp)
 
         self.pub_drive     = self.create_publisher(AckermannDriveStamped, "/drive",                 10)
         self.pub_best_traj = self.create_publisher(Marker,                "/mppi_best_trajectory",  10)
@@ -137,7 +136,7 @@ class MPPIController(Node):
         self.pub_virtual_obs = self.create_publisher(Marker,              "/virtual_obstacles_marker", 10)
 
         # ── Vòng lặp điều khiển cố định 20 Hz (tách độc lập đa luồng) ──
-        self.control_timer = self.create_timer(self.dt, self.control_loop, callback_group=control_grp)
+        self.control_timer = self.create_timer(self.dt, self.control_loop, callback_group=self.control_grp)
 
         # ── Nạp waypoints ─────────────────────────────────────────────
         self.waypoints          = np.zeros((0, 2))
