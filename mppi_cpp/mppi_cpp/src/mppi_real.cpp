@@ -20,7 +20,7 @@
 
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_listener.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 // Define a point struct for convenience
 struct Point2D {
@@ -508,9 +508,8 @@ private:
 
         // Update MPPI
         double min_cost = costs[0];
-        int best_idx = 0;
         for (int n = 1; n < num_samples; n++) {
-            if (costs[n] < min_cost) { min_cost = costs[n]; best_idx = n; }
+            if (costs[n] < min_cost) { min_cost = costs[n]; }
         }
 
         double w_sum = 0.0;
