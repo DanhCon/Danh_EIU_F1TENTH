@@ -239,6 +239,10 @@ private:
         theta0 = std::atan2(siny, cosy);
 
 
+        if (std::isnan(x0) || std::isnan(y0) || std::isnan(theta0)) {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "NaN in pose detected!");
+            return;
+        }
         // Snapshot obstacles (Bug 3 - Perf)
         std::vector<Point2D> obs_snapshot;
         rclcpp::Time obs_stamp;
@@ -264,7 +268,8 @@ private:
         std::vector<double> local_hdgs;
         std::vector<int> local_idxs;
         for (int i = -15; i < wp_window - 15; i++) {
-            int idx = (nearest_wp + i + waypoints.size()) % waypoints.size();
+            int idx = (nearest_wp + i) % (int)waypoints.size();
+            if (idx < 0) idx += waypoints.size();
             local_wps.push_back(waypoints[idx]);
             local_hdgs.push_back(waypoint_headings[idx]);
             local_idxs.push_back(idx);
@@ -413,7 +418,8 @@ private:
                     double term_cost = 3.0 * w_track * min_wp_d2;
                     term_cost += 3.0 * w_hdg_eff * std::pow(err, 2); // Bug 8 - Logic
                     
-                    int prog_raw = (global_idx - local_idxs[local_nearest_idx] + waypoints.size()) % waypoints.size(); // Bug 3 - Math
+                    int prog_raw = (global_idx - local_idxs[local_nearest_idx]) % (int)waypoints.size();
+                    if (prog_raw < 0) prog_raw += waypoints.size(); // Bug 3 - Math
                     double prog_cost_val = -(double)prog_raw;
                     if (prog_raw > (int)waypoints.size() / 2) {
                         prog_cost_val = (double)(waypoints.size() - prog_raw);
@@ -484,6 +490,10 @@ private:
     }
 
     void publish_drive(double v, double steer) {
+        if (std::isnan(v) || std::isnan(steer)) {
+            RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "NaN detected in control! v=%f, steer=%f", v, steer);
+            return;
+        }
         ackermann_msgs::msg::AckermannDriveStamped drive_msg;
         drive_msg.header.stamp = this->now();
         drive_msg.header.frame_id = car_frame;
