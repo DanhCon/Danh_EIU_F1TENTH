@@ -76,10 +76,16 @@ public:
         load_waypoints(csv_path);
         publish_waypoints_marker();
         
+        local_wps.reserve(60);
+        local_hdgs.reserve(60);
+        local_idxs.reserve(60);
+        
         RCLCPP_INFO(this->get_logger(), "MPPI C++ Controller started.");
     }
 
 private:
+    static constexpr double WHEELBASE = 0.33;
+    static constexpr double MAX_STEER_RAD = 0.418;
     int horizon, num_samples;
     double dt, lambda_;
     double w_track, w_progress, w_heading, w_obs, w_smooth, w_speed;
@@ -87,6 +93,10 @@ private:
     std::vector<Point2D> waypoints;
     std::vector<double> waypoint_headings;
     std::vector<double> waypoint_curvatures;
+    
+    std::vector<Point2D> local_wps;
+    std::vector<double> local_hdgs;
+    std::vector<int> local_idxs;
     
     std::vector<Control> nominal_control;
     std::vector<std::vector<Control>> noise_buf;
@@ -147,7 +157,7 @@ private:
         pub_waypoints->publish(marker_array);
     }
 
-    double normalize_angle(double angle) {
+    [[nodiscard]] inline double normalize_angle(double angle) {
         angle = std::fmod(angle + M_PI, 2.0 * M_PI);
         if (angle < 0) angle += 2.0 * M_PI;
         return angle - M_PI;
@@ -270,9 +280,9 @@ private:
         last_nearest_wp_idx = nearest_wp;
 
         int wp_window = 50;
-        std::vector<Point2D> local_wps;
-        std::vector<double> local_hdgs;
-        std::vector<int> local_idxs;
+        local_wps.clear();
+        local_hdgs.clear();
+        local_idxs.clear();
         for (int i = -15; i < wp_window - 15; i++) {
             int idx = (nearest_wp + i) % (int)waypoints.size();
             if (idx < 0) idx += waypoints.size();
@@ -300,7 +310,7 @@ private:
         double target_speed = 2.0;
         double min_speed_curve = 1.8;
         double curve_thresh = 0.35;
-        double speed_factor = max_c > curve_thresh ? std::max(0.0, 1.0 - (max_c - curve_thresh)) : 1.0;
+        double speed_factor = max_c > curve_thresh ? std::max(0.0, 1.0 - (max_c - curve_thresh) / curve_thresh) : 1.0;
         double current_target_speed = min_speed_curve + (target_speed - min_speed_curve) * speed_factor;
 
         // Rate limit deceleration (Bug 6 - Logic)
@@ -312,7 +322,7 @@ private:
         current_target_speed = std::max(last_target_speed - max_decel * dt, current_target_speed);
         last_target_speed = current_target_speed;
 
-        double danger_radius = 1.2;
+        const double danger_radius = 1.2;
         bool front_blocked = false;
         // TTL Check (Bug 5 - Logic)
         if (obs_stamp.nanoseconds() != 0 && (now_s - obs_stamp.seconds() < 0.5)) {
@@ -359,7 +369,7 @@ private:
         }
 
         double dynamic_min_speed = is_reversing ? -1.5 : -0.3; // Bug 2 - Logic
-        double dynamic_max_speed = is_reversing ? -0.3 : std::max(0.5, current_target_speed);
+        double dynamic_max_speed = is_reversing ? -0.3 : 5.0; // [FIX] Max physical speed
         if (is_reversing) current_target_speed = -0.8;
 
         double w_hdg_eff = w_heading; 
@@ -390,11 +400,11 @@ private:
                 double orig_noise_s = noise_buf[n][t].steer;
                 
                 double pert_v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v + orig_noise_v));
-                double pert_s = std::max(-0.418, std::min(0.418, nominal_control[t].steer + orig_noise_s));
+                double pert_s = std::max(-MAX_STEER_RAD, std::min(0.418, nominal_control[t].steer + orig_noise_s));
 
                 x += pert_v * std::cos(th) * dt;
                 y += pert_v * std::sin(th) * dt;
-                th += pert_v * std::tan(pert_s) / 0.33 * dt;
+                th += pert_v * std::tan(pert_s) / WHEELBASE * dt;
                 th = normalize_angle(th);
 
                 double min_wp_d2 = 999.0;
@@ -463,7 +473,7 @@ private:
             double orig_v = noise_buf[best_idx][t].v;
             double orig_s = noise_buf[best_idx][t].steer;
             double pert_v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v + orig_v));
-            double pert_s = std::max(-0.418, std::min(0.418, nominal_control[t].steer + orig_s));
+            double pert_s = std::max(-MAX_STEER_RAD, std::min(0.418, nominal_control[t].steer + orig_s));
             double min_d = 999.0;
             for (const auto& o : obs_snapshot) {
                 double dx = x_b - o.x;
@@ -476,7 +486,7 @@ private:
             if (min_d < danger_radius) best_obs_cost += std::pow(danger_radius - min_d, 2);
             x_b += pert_v * std::cos(th_b) * dt; 
             y_b += pert_v * std::sin(th_b) * dt;
-            th_b += pert_v * std::tan(pert_s) / 0.33 * dt;
+            th_b += pert_v * std::tan(pert_s) / WHEELBASE * dt;
             th_b = normalize_angle(th_b);
         }
         last_best_obs_cost = best_obs_cost;
@@ -499,17 +509,17 @@ private:
                 nominal_control[t].steer += num_s / w_sum;
                 
                 nominal_control[t].v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v));
-                nominal_control[t].steer = std::max(-0.418, std::min(0.418, nominal_control[t].steer));
+                nominal_control[t].steer = std::max(-MAX_STEER_RAD, std::min(0.418, nominal_control[t].steer));
             }
         } else {
             RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MPPI weight collapse detected (w_sum near 0)! Skipping update.");
             for (int t = 0; t < horizon; t++) {
                 nominal_control[t].v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v));
-                nominal_control[t].steer = std::max(-0.418, std::min(0.418, nominal_control[t].steer));
+                nominal_control[t].steer = std::max(-MAX_STEER_RAD, std::min(0.418, nominal_control[t].steer));
             }
         }
 
-        publish_drive(nominal_control[1].v, nominal_control[1].steer);
+        publish_drive(nominal_control[0].v, nominal_control[0].steer);
         publish_best_trajectory();
 
         for (int t = 0; t < horizon - 1; t++) {
@@ -543,7 +553,7 @@ private:
             double steer = nominal_control[t].steer;
             x += v * std::cos(th) * dt;
             y += v * std::sin(th) * dt;
-            th += v * std::tan(steer) / 0.33 * dt;
+            th += v * std::tan(steer) / WHEELBASE * dt;
             th = normalize_angle(th);
             
             p.x = x; p.y = y; p.z = 0.05;
