@@ -66,7 +66,7 @@ class MPPIController(Node):
         self.w_track    = 80.0  # Bám đường raceline chặt (tăng từ 40 để xe bám sát vạch đường khi đi cực nhanh)
         self.w_progress = 1.5   # Tiến dọc đường đua (giảm để không lấn át cost tránh vật cản/bám cua)
         self.w_control  = 1.5   # Làm mịn lệnh điều khiển
-        self.w_obstacle = 100.0 # Tránh vật cản (va chạm chuẩn hóa)
+        self.w_obstacle = 500.0 # Tránh vật cản (trọng số cực lớn theo mppi_nhat)
         self.w_speed    = 5.0   # Bám vận tốc mục tiêu (giảm từ 15 để ưu tiên cho sự an toàn và bám đường lên trước)
         self.w_heading  = 15.0  # Bám hướng tiếp tuyến
 
@@ -444,8 +444,9 @@ class MPPIController(Node):
                 mask      = (min_dists < self.danger_radius) & (min_dists >= self.robot_radius)
                 soft_cost = np.sum(gauss * mask, axis=1) / T                 # (N,)
                 
-                # obs_cost kết hợp: chuẩn hóa về [0, ~2.1] để tránh scale mismatch
-                obs_cost = (collision_any * 1.0 + col_cost / float(self.horizon) + soft_cost / float(self.horizon))
+                # obs_cost kết hợp: phạt va chạm nhị phân (100.0) + số bước (10.0)
+                # Dùng công thức gốc của mppi_nhat để ép xe né gắt vật cản
+                obs_cost = collision_any * 100.0 + col_cost * 10.0 + 0.1 * soft_cost
 
         # ── 7. Terminal cost (tập trung tại bước cuối cùng t=T - BUG-F) ──
         final_pts = state_rollouts[:, -1, :2]   # (N, 2)
