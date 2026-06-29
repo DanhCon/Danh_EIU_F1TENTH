@@ -104,8 +104,12 @@ class MPPIController(Node):
         self.stuck_start_time = 0.0
         self.is_stuck = False
 
-        # Vận tốc dọc hiện tại (cập nhật từ odom_callback)
+        # Vị trí hiện tại (cập nhật từ odom_callback)
+        self.x0 = 0.0
+        self.y0 = 0.0
+        self.theta0 = 0.0
         self.v_cur = 0.0
+        self.odom_received = False
 
         # RNG riêng cho MPPI (nhanh và an toàn đa luồng hơn)
         self.rng = np.random.default_rng()
@@ -121,7 +125,7 @@ class MPPIController(Node):
         control_grp = MutuallyExclusiveCallbackGroup()
 
         # ── ROS 2 pub/sub (CHUYỂN TOPIC XE THẬT) ──────────────────────
-        self.sub_odom  = self.create_subscription(Odometry,  "/odom", self.odom_callback,  10, callback_group=sensor_grp)
+        self.sub_odom  = self.create_subscription(Odometry,  "/pf/pose/odom", self.odom_callback,  10, callback_group=sensor_grp)
         self.sub_laser = self.create_subscription(LaserScan, "/scan", self.lidar_callback, 10, callback_group=sensor_grp)
         self.sub_clicked_point = self.create_subscription(PointStamped, "/clicked_point", self.clicked_point_callback, 10, callback_group=sensor_grp)
         self.sub_clear_virtual = self.create_subscription(Empty, "/clear_virtual_obstacles", self.clear_virtual_obstacles_callback, 10, callback_group=sensor_grp)
@@ -496,30 +500,27 @@ class MPPIController(Node):
     # ─────────────────────────────────────────────────────────────────
 
     def odom_callback(self, msg: Odometry) -> None:
-        """Callback cực nhẹ: chỉ lưu lại vận tốc dọc hiện tại để tránh lag."""
+        """Cập nhật vị trí và vận tốc trực tiếp từ Particle Filter (map frame)"""
+        self.x0 = float(msg.pose.pose.position.x)
+        self.y0 = float(msg.pose.pose.position.y)
+        self.theta0 = self._quat_to_yaw(msg.pose.pose.orientation)
         self.v_cur = float(msg.twist.twist.linear.x)
+        self.odom_received = True
 
     def control_loop(self) -> None:
         """Vòng lặp tính toán MPPI chạy cố định ở 20 Hz trên luồng riêng."""
         start_time = self.get_clock().now()
         self.log_counter += 1
 
-        # 1. Lấy trạng thái hiện tại từ TF (Hệ tọa độ Map) thay vì đọc trực tiếp tin nhắn Odom
-        try:
-            tf = self.tf_buffer.lookup_transform(
-                self.map_frame,
-                self.car_frame,
-                rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.02),
-            )
-            x0 = tf.transform.translation.x
-            y0 = tf.transform.translation.y
-            q  = tf.transform.rotation
-            theta0 = self._quat_to_yaw(q)
-        except Exception as e:
-            self.get_logger().warn(f"Chua co vi tri tren Map qua TF: {str(e)}", throttle_duration_sec=2.0)
+        # 1. Lấy trạng thái hiện tại từ biến odom_callback (đã là hệ tọa độ Map)
+        if not self.odom_received:
+            self.get_logger().warn("Chua nhan duoc toa do tu /pf/pose/odom", throttle_duration_sec=2.0)
             self._publish_drive(0.0, 0.0) # Fail-safe phanh xe khi mất định vị
             return
+            
+        x0 = self.x0
+        y0 = self.y0
+        theta0 = self.theta0
 
         v_cur  = self.v_cur
         state  = np.array([x0, y0, theta0])
