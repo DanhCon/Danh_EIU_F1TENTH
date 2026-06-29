@@ -602,12 +602,11 @@ class MPPIController(Node):
         if self.is_reversing:
             current_target_speed = -0.6
 
-        # ── Giới hạn tốc độ tối đa động dựa trên khoảng cách tới vật cản phía trước và độ an toàn của quỹ đạo trước đó ──
+        # ── Giới hạn tốc độ tối đa động (Pre-dodge Braking) ──
         dynamic_max_speed = self.max_speed
-        if self.forward_min_obs_dist < 3.0 and self.last_best_obs_cost >= 1.0:
-            # Tuyến tính giảm tốc độ tối đa từ max_speed xuống 1.2 m/s khi khoảng cách từ 3.0m xuống 0.8m
-            scale = np.clip((self.forward_min_obs_dist - 0.8) / 2.2, 0.0, 1.0)
-            dynamic_max_speed = 1.2 + (self.max_speed - 1.2) * scale
+        if self.last_best_obs_cost > 0.0:
+            dynamic_max_speed = 2.0
+            current_target_speed = min(current_target_speed, 2.0)
 
         # ── Unstuck safety guard ─────────────────────────────────
         # Nếu xe đang dừng/chạy rất chậm nhưng đường thoáng phía trước, mà nominal control bị kẹt ở mức thấp
