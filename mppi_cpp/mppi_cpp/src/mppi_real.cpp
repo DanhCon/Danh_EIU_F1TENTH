@@ -201,11 +201,19 @@ private:
         while (std::getline(file, line)) {
             if (line.empty() || line[0] == '#') continue;
             std::stringstream ss(line);
-            std::string val;
-            Point2D pt;
-            if (std::getline(ss, val, ',')) pt.x = std::stod(val);
-            if (std::getline(ss, val, ',')) pt.y = std::stod(val);
-            waypoints.push_back(pt);
+            std::string val1, val2;
+            if (std::getline(ss, val1, ',') && std::getline(ss, val2, ',')) {
+                try {
+                    Point2D pt;
+                    pt.x = std::stod(val1);
+                    pt.y = std::stod(val2);
+                    waypoints.push_back(pt);
+                } catch (const std::invalid_argument& e) {
+                    continue; // Skip lines with invalid numbers (like headers)
+                } catch (const std::out_of_range& e) {
+                    continue;
+                }
+            }
         }
         
         int w = waypoints.size();
