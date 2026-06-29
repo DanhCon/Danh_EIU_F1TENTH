@@ -95,6 +95,7 @@ private:
     
     double x0 = 0.0, y0 = 0.0, theta0 = 0.0, v_cur = 0.0;
     bool odom_received = false;
+    bool pose_received = false;
     rclcpp::Time odom_stamp; // Bug 7 - Logic
     
     std::vector<Point2D> map_obstacles;
@@ -225,13 +226,14 @@ private:
         theta0 = std::atan2(siny, cosy);
         v_cur = msg->twist.twist.linear.x;
         odom_received = true;
+        pose_received = true;
         odom_stamp = this->now();
     }
 
     void control_loop() {
         double now_s = this->now().seconds();
         // Odom timeout check (Bug 7)
-        if (!odom_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
+        if (!odom_received || !pose_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
             publish_drive(0.0, 0.0);
             return;
         }
@@ -249,15 +251,16 @@ private:
             obs_stamp = obstacle_stamp;
         }
 
-        // Local WP Search (Bug 5 - Perf)
+        // Local WP Search with Wrap-around
         int nearest_wp = last_nearest_wp_idx;
         double min_d = 9999.0;
-        int search_start = std::max(0, nearest_wp - 20);
-        int search_end = std::min((int)waypoints.size(), nearest_wp + 40);
-        for (int i = search_start; i < search_end; i++) {
-            double d = std::hypot(waypoints[i].x - x0, waypoints[i].y - y0);
-            if (d < min_d) { min_d = d; nearest_wp = i; }
+        int best_wp = nearest_wp;
+        for (int di = -20; di <= 40; di++) {
+            int idx = (nearest_wp + di + (int)waypoints.size()) % (int)waypoints.size();
+            double d = std::hypot(waypoints[idx].x - x0, waypoints[idx].y - y0);
+            if (d < min_d) { min_d = d; best_wp = idx; }
         }
+        nearest_wp = best_wp;
         if (min_d > 5.0) { // Teleport recovery
             for (size_t i = 0; i < waypoints.size(); i++) {
                 double d = std::hypot(waypoints[i].x - x0, waypoints[i].y - y0);
@@ -280,6 +283,10 @@ private:
         int local_nearest_idx = -1;
         for (int i = 0; i < (int)local_idxs.size(); i++) {
             if (local_idxs[i] == nearest_wp) { local_nearest_idx = i; break; }
+        }
+        if (local_nearest_idx == -1) {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "local_nearest_idx not found, skipping loop!");
+            return;
         }
 
         // Curvature Profiling
@@ -310,11 +317,12 @@ private:
         // TTL Check (Bug 5 - Logic)
         if (obs_stamp.nanoseconds() != 0 && (now_s - obs_stamp.seconds() < 0.5)) {
             double braking_dist = std::max(0.8, v_cur * v_cur / 6.0 + 0.3); // v^2/(2a) + margin
+            double pre_bound = braking_dist + 0.5;
             for (const auto& o : obs_snapshot) {
                 double dx = o.x - x0;
-                if (std::abs(dx) > std::max(danger_radius, braking_dist)) continue; 
+                if (std::abs(dx) > pre_bound) continue; 
                 double dy = o.y - y0;
-                if (std::abs(dy) > std::max(danger_radius, 0.35)) continue; 
+                if (std::abs(dy) > pre_bound) continue; 
                 
                 double dx_local = dx * std::cos(-theta0) - dy * std::sin(-theta0);
                 double dy_local = dx * std::sin(-theta0) + dy * std::cos(-theta0);
@@ -327,8 +335,7 @@ private:
 
         // Anti-stuck watchdog (Bug 3 - Logic)
         bool is_stuck = false;
-        double last_s = nominal_control[0].steer;
-        if (v_cur < 0.1 && std::abs(last_s) > 0.3) {
+        if (v_cur < 0.05 && std::abs(nominal_control[0].v) > 0.3) {
             if (!is_stuck_timer_active) {
                 stuck_start_time = now_s;
                 is_stuck_timer_active = true;
@@ -481,26 +488,68 @@ private:
             w_sum += w;
         }
 
-        for (int t = 0; t < horizon; t++) {
-            double num_v = 0.0, num_s = 0.0;
-            for (int n = 0; n < num_samples; n++) {
-                num_v += weights_buf[n] * noise_buf[n][t].v; // Bug 1 (Math) correctly uses original noise
-                num_s += weights_buf[n] * noise_buf[n][t].steer;
+        if (w_sum > 1e-10) {
+            for (int t = 0; t < horizon; t++) {
+                double num_v = 0.0, num_s = 0.0;
+                for (int n = 0; n < num_samples; n++) {
+                    num_v += weights_buf[n] * noise_buf[n][t].v;
+                    num_s += weights_buf[n] * noise_buf[n][t].steer;
+                }
+                nominal_control[t].v += num_v / w_sum;
+                nominal_control[t].steer += num_s / w_sum;
+                
+                nominal_control[t].v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v));
+                nominal_control[t].steer = std::max(-0.418, std::min(0.418, nominal_control[t].steer));
             }
-            nominal_control[t].v += num_v / w_sum;
-            nominal_control[t].steer += num_s / w_sum;
-            
-            nominal_control[t].v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v));
-            nominal_control[t].steer = std::max(-0.418, std::min(0.418, nominal_control[t].steer));
+        } else {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MPPI weight collapse detected (w_sum near 0)! Skipping update.");
+            for (int t = 0; t < horizon; t++) {
+                nominal_control[t].v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v));
+                nominal_control[t].steer = std::max(-0.418, std::min(0.418, nominal_control[t].steer));
+            }
         }
 
         publish_drive(nominal_control[1].v, nominal_control[1].steer);
+        publish_best_trajectory();
 
         for (int t = 0; t < horizon - 1; t++) {
             nominal_control[t] = nominal_control[t+1];
         }
         nominal_control[horizon-1].v = current_target_speed; // Bug 6 - Logic Fix
         nominal_control[horizon-1].steer = nominal_control[horizon-2].steer * 0.5;
+    }
+
+    void publish_best_trajectory() {
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = map_frame;
+        marker.header.stamp = this->now();
+        marker.ns = "best_trajectory";
+        marker.id = 0;
+        marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.scale.x = 0.08;
+        marker.color.a = 1.0;
+        marker.color.r = 0.0;
+        marker.color.g = 1.0;
+        marker.color.b = 0.0;
+
+        double x = x0, y = y0, th = theta0;
+        geometry_msgs::msg::Point p;
+        p.x = x; p.y = y; p.z = 0.05;
+        marker.points.push_back(p);
+
+        for (int t = 0; t < horizon; t++) {
+            double v = nominal_control[t].v;
+            double steer = nominal_control[t].steer;
+            x += v * std::cos(th) * dt;
+            y += v * std::sin(th) * dt;
+            th += v * std::tan(steer) / 0.33 * dt;
+            th = normalize_angle(th);
+            
+            p.x = x; p.y = y; p.z = 0.05;
+            marker.points.push_back(p);
+        }
+        pub_best_traj->publish(marker);
     }
 
     void publish_drive(double v, double steer) {
