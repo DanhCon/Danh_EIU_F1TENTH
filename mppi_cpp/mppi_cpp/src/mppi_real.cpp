@@ -43,7 +43,7 @@ public:
         w_heading = 10.0;
         w_obs = 500.0;
         w_smooth = 1.5;
-        w_speed = 3.0;
+        w_speed = 8.0;
 
         // Pre-allocate buffers (Bug 4 - Performance)
         noise_buf.resize(num_samples, std::vector<Control>(horizon));
@@ -182,9 +182,9 @@ private:
         waypoint_headings.resize(w);
         waypoint_curvatures.resize(w);
         for (int i = 0; i < w; i++) {
-            Point2D p1 = waypoints[(i - 1 + w) % w];
+            Point2D p1 = waypoints[(i - 5 + w) % w];
             Point2D p2 = waypoints[i];
-            Point2D p3 = waypoints[(i + 1) % w];
+            Point2D p3 = waypoints[(i + 5) % w];
             waypoint_headings[i] = std::atan2(p3.y - p1.y, p3.x - p1.x);
             double dx1 = p2.x - p1.x; double dy1 = p2.y - p1.y;
             double dx2 = p3.x - p2.x; double dy2 = p3.y - p2.y;
@@ -375,7 +375,7 @@ private:
         double w_hdg_eff = w_heading; 
         double w_prog_eff = is_reversing ? 0.0 : w_progress;
 
-        std::normal_distribution<double> dist_v(0.0, 1.0);
+        std::normal_distribution<double> dist_v(0.0, 1.5);
         std::normal_distribution<double> dist_s(0.0, 0.4);
         for (int n = 0; n < num_samples; n++) {
             for (int t = 0; t < horizon; t++) {

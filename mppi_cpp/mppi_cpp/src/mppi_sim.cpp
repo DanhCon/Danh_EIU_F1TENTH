@@ -43,7 +43,7 @@ public:
         w_heading = 40.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
         w_obs = 100.0;     // [TUNE] Né vật cản.
         w_smooth = 5.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
-        w_speed = 3.0;     // [TUNE] Phạt sai lệch tốc độ.
+        w_speed = 8.0;     // [TUNE] Phạt sai lệch tốc độ.
 
         // Pre-allocate buffers (Bug 4 - Performance)
         noise_buf.resize(num_samples, std::vector<Control>(horizon));
@@ -182,9 +182,9 @@ private:
         waypoint_headings.resize(w);
         waypoint_curvatures.resize(w);
         for (int i = 0; i < w; i++) {
-            Point2D p1 = waypoints[(i - 1 + w) % w];
+            Point2D p1 = waypoints[(i - 5 + w) % w];
             Point2D p2 = waypoints[i];
-            Point2D p3 = waypoints[(i + 1) % w];
+            Point2D p3 = waypoints[(i + 5) % w];
             waypoint_headings[i] = std::atan2(p3.y - p1.y, p3.x - p1.x);
             double dx1 = p2.x - p1.x; double dy1 = p2.y - p1.y;
             double dx2 = p3.x - p2.x; double dy2 = p3.y - p2.y;
@@ -383,7 +383,7 @@ private:
         double w_hdg_eff = w_heading; 
         double w_prog_eff = is_reversing ? 0.0 : w_progress;
 
-        std::normal_distribution<double> dist_v(0.0, 1.0);
+        std::normal_distribution<double> dist_v(0.0, 1.5);
         std::normal_distribution<double> dist_s(0.0, 0.2); // [TUNE] Nhiễu vô lăng: Nếu xe lạng lách quá bạo lực, giảm xuống 0.15 hoặc 0.2
         for (int n = 0; n < num_samples; n++) {
             for (int t = 0; t < horizon; t++) {
