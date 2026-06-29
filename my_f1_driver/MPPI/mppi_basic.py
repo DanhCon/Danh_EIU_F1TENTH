@@ -71,8 +71,8 @@ class MPPIController(Node):
         self.w_heading  = 15.0  # Bám hướng tiếp tuyến
 
         # Bán kính an toàn của xe (m)
-        self.robot_radius   = 0.25  # Giảm xuống 0.25m (vật cản ảo có đường kính 50cm)
-        self.danger_radius  = 0.75  # Giảm tương ứng để xe không báo động giả từ quá xa
+        self.robot_radius   = 0.30  # Tăng lên 0.30m (tạo lớp đệm 5cm an toàn quanh xe)
+        self.danger_radius  = 0.80  # Tăng tương ứng để khớp với robot_radius mới
 
         # Tốc độ mục tiêu lớn nhất trên đường thẳng (m/s)
         self.target_speed = 5.0  # Tăng tốc độ mục tiêu trên đường thẳng lên 5.0 m/s
@@ -388,6 +388,10 @@ class MPPIController(Node):
         # giúp MPPI tự động quay đầu xe lại khi bị xoay ngược 180 độ.
         # Heading cost: khi lùi (is_reversing), KHÔNG phạt hướng
         w_hdg_eff = 0.0 if self.is_reversing else self.w_heading
+        
+        # Progress cost: khi lùi, KHÔNG phạt thụt lùi để xe dứt khoát lùi
+        w_prog_eff = 0.0 if self.is_reversing else self.w_progress
+
         heading_cost = np.sum(heading_err ** 2, axis=1) / T        # (N,)
 
         # ── 4. Speed cost ────────────────────────────────────────────
@@ -476,7 +480,7 @@ class MPPIController(Node):
 
         return (
             self.w_track    * track_cost    +
-            self.w_progress * progress_cost +  # âm → giảm tổng cost khi tiến xa
+            w_prog_eff      * progress_cost +  # âm → giảm tổng cost khi tiến xa
             self.w_control  * smooth_cost   +
             self.w_speed    * speed_cost    +
             w_hdg_eff       * heading_cost  +
@@ -551,11 +555,11 @@ class MPPIController(Node):
         # ── Hysteresis State cho việc đi lùi (Tránh dao động tiến/lùi liên tục) ──
         HYSTERESIS_TIME = 1.2
         if not self.is_reversing:
-            if self.forward_min_obs_dist < 0.8:
+            if self.forward_min_obs_dist < 0.6:
                 self.is_reversing = True
                 self._reverse_end_time = self.get_clock().now().nanoseconds / 1e9 + HYSTERESIS_TIME
                 self.get_logger().warn(
-                    f"[SAFETY] Cận kề va chạm phía trước (forward_obs={self.forward_min_obs_dist:.2f}m < 0.8m) -> Kích hoạt chế độ lùi tự động."
+                    f"[SAFETY] Cận kề va chạm phía trước (forward_obs={self.forward_min_obs_dist:.2f}m < 0.6m) -> Kích hoạt chế độ lùi tự động."
                 )
         else:
             now_s = self.get_clock().now().nanoseconds / 1e9
