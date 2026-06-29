@@ -258,6 +258,12 @@ private:
             double d = std::hypot(waypoints[i].x - x0, waypoints[i].y - y0);
             if (d < min_d) { min_d = d; nearest_wp = i; }
         }
+        if (min_d > 5.0) { // Teleport recovery
+            for (size_t i = 0; i < waypoints.size(); i++) {
+                double d = std::hypot(waypoints[i].x - x0, waypoints[i].y - y0);
+                if (d < min_d) { min_d = d; nearest_wp = i; }
+            }
+        }
         last_nearest_wp_idx = nearest_wp;
 
         int wp_window = 50;
@@ -488,7 +494,7 @@ private:
             nominal_control[t].steer = std::max(-0.418, std::min(0.418, nominal_control[t].steer));
         }
 
-        publish_drive(nominal_control[0].v, nominal_control[0].steer);
+        publish_drive(nominal_control[1].v, nominal_control[1].steer);
 
         for (int t = 0; t < horizon - 1; t++) {
             nominal_control[t] = nominal_control[t+1];

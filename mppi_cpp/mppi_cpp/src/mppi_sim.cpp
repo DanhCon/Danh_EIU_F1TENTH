@@ -42,7 +42,7 @@ public:
         w_progress = 5.0;  // [TUNE] Đi về phía trước.
         w_heading = 40.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
         w_obs = 100.0;     // [TUNE] Né vật cản.
-        w_smooth = 5.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
+        w_smooth = 10.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
         w_speed = 3.0;     // [TUNE] Phạt sai lệch tốc độ.
 
         // Pre-allocate buffers (Bug 4 - Performance)
@@ -265,6 +265,12 @@ private:
         for (int i = search_start; i < search_end; i++) {
             double d = std::hypot(waypoints[i].x - x0, waypoints[i].y - y0);
             if (d < min_d) { min_d = d; nearest_wp = i; }
+        }
+        if (min_d > 5.0) { // Teleport recovery
+            for (size_t i = 0; i < waypoints.size(); i++) {
+                double d = std::hypot(waypoints[i].x - x0, waypoints[i].y - y0);
+                if (d < min_d) { min_d = d; nearest_wp = i; }
+            }
         }
         last_nearest_wp_idx = nearest_wp;
 
@@ -496,7 +502,7 @@ private:
             nominal_control[t].steer = std::max(-0.418, std::min(0.418, nominal_control[t].steer));
         }
 
-        publish_drive(nominal_control[0].v, nominal_control[0].steer);
+        publish_drive(nominal_control[1].v, nominal_control[1].steer);
 
         for (int t = 0; t < horizon - 1; t++) {
             nominal_control[t] = nominal_control[t+1];
@@ -506,7 +512,7 @@ private:
 
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, 
             "MPPI | min_cost: %7.1f | target_v: %.2f | v_cmd: %.2f | steer: %6.3f", 
-            min_cost, current_target_speed, nominal_control[0].v, nominal_control[0].steer);
+            min_cost, current_target_speed, nominal_control[1].v, nominal_control[1].steer);
     }
 
     void publish_drive(double v, double steer) {
