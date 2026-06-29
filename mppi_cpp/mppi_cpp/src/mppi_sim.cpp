@@ -38,11 +38,11 @@ public:
         
         lambda_ = 50.0; // [TUNE] Nhiệt độ Softmax: Càng lớn -> trung bình quỹ đạo càng đều. Càng nhỏ -> tham lam quỹ đạo tốt nhất
         
-        w_track = 60.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).
+        w_track = 100.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).
         w_progress = 5.0;  // [TUNE] Đi về phía trước.
         w_heading = 40.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
         w_obs = 100.0;     // [TUNE] Né vật cản.
-        w_smooth = 10.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
+        w_smooth = 5.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
         w_speed = 3.0;     // [TUNE] Phạt sai lệch tốc độ.
 
         // Pre-allocate buffers (Bug 4 - Performance)
@@ -225,7 +225,7 @@ private:
 
     void control_loop() {
         double now_s = this->now().seconds();
-        if (!odom_received || !pose_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
+        if (!odom_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
             publish_drive(0.0, 0.0);
             return;
         }

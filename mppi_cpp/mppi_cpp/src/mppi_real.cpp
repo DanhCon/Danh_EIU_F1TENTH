@@ -233,7 +233,7 @@ private:
     void control_loop() {
         double now_s = this->now().seconds();
         // Odom timeout check (Bug 7)
-        if (!odom_received || !pose_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
+        if (!odom_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
             publish_drive(0.0, 0.0);
             return;
         }
