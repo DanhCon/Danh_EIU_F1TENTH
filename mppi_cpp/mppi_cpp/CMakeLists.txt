@@ -25,21 +25,50 @@ target_compile_options(mppi_real_cpp PRIVATE -O3 -ffast-math)
 if(OpenMP_CXX_FOUND)
   target_link_libraries(mppi_real_cpp OpenMP::OpenMP_CXX)
 endif()
-
+target_include_directories(mppi_real_cpp PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${EIGEN3_INCLUDE_DIR}
+)
 ament_target_dependencies(mppi_real_cpp
   rclcpp
-  nav_msgs
+  std_msgs
   sensor_msgs
+  nav_msgs
+  geometry_msgs
+  visualization_msgs
   ackermann_msgs
+  tf2
   tf2_ros
   tf2_geometry_msgs
-  visualization_msgs
+)
+
+add_executable(mppi_sim_cpp src/mppi_sim.cpp)
+target_compile_options(mppi_sim_cpp PRIVATE -O3 -ffast-math)
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(mppi_sim_cpp OpenMP::OpenMP_CXX)
+endif()
+target_include_directories(mppi_sim_cpp PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+  ${EIGEN3_INCLUDE_DIR}
+)
+ament_target_dependencies(mppi_sim_cpp
+  rclcpp
   std_msgs
+  sensor_msgs
+  nav_msgs
   geometry_msgs
+  visualization_msgs
+  ackermann_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
 )
 
 install(TARGETS
   mppi_real_cpp
+  mppi_sim_cpp
   DESTINATION lib/${PROJECT_NAME}
 )
 
