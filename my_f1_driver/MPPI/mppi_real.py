@@ -30,6 +30,7 @@ from geometry_msgs.msg import Point, PointStamped
 from std_msgs.msg import Empty
 from nav_msgs.msg import Odometry
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
+from rclpy.qos import qos_profile_sensor_data
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
@@ -125,8 +126,8 @@ class MPPIController(Node):
         control_grp = MutuallyExclusiveCallbackGroup()
 
         # ── ROS 2 pub/sub (CHUYỂN TOPIC XE THẬT) ──────────────────────
-        self.sub_odom  = self.create_subscription(Odometry,  "/pf/pose/odom", self.odom_callback,  10, callback_group=sensor_grp)
-        self.sub_laser = self.create_subscription(LaserScan, "/scan", self.lidar_callback, 10, callback_group=sensor_grp)
+        self.sub_odom  = self.create_subscription(Odometry,  "/pf/pose/odom", self.odom_callback,  qos_profile_sensor_data, callback_group=sensor_grp)
+        self.sub_laser = self.create_subscription(LaserScan, "/scan", self.lidar_callback, qos_profile_sensor_data, callback_group=sensor_grp)
         self.sub_clicked_point = self.create_subscription(PointStamped, "/clicked_point", self.clicked_point_callback, 10, callback_group=sensor_grp)
         self.sub_clear_virtual = self.create_subscription(Empty, "/clear_virtual_obstacles", self.clear_virtual_obstacles_callback, 10, callback_group=sensor_grp)
 
