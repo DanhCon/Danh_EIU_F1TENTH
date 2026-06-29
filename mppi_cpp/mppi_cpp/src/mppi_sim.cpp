@@ -299,7 +299,7 @@ private:
 
         geometry_msgs::msg::TransformStamped tf_map_to_base;
         try {
-            tf_map_to_base = tf_buffer->lookup_transform(map_frame, car_frame, tf2::TimePointZero);
+            tf_map_to_base = tf_buffer->lookupTransform(map_frame, car_frame, tf2::TimePointZero);
         } catch (const tf2::TransformException & ex) {
             // RCLCPP_WARN_SKIPFIRST_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "TF Error: %s", ex.what());
             return;
