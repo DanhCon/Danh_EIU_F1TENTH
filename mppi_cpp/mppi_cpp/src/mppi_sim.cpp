@@ -36,14 +36,14 @@ public:
         num_samples = this->get_parameter("num_samples").as_int();
         dt = this->get_parameter("dt").as_double();
         
-        lambda_ = 50.0;
+        lambda_ = 50.0; // [TUNE] Nhiệt độ Softmax: Càng lớn -> trung bình quỹ đạo càng đều. Càng nhỏ -> tham lam quỹ đạo tốt nhất
         
-        w_track = 20.0;
-        w_progress = 5.0;
-        w_heading = 10.0;
-        w_obs = 500.0;
-        w_smooth = 1.5;
-        w_speed = 3.0;
+        w_track = 10.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).
+        w_progress = 5.0;  // [TUNE] Đi về phía trước.
+        w_heading = 40.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
+        w_obs = 100.0;     // [TUNE] Né vật cản.
+        w_smooth = 5.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
+        w_speed = 3.0;     // [TUNE] Phạt sai lệch tốc độ.
 
         // Pre-allocate buffers (Bug 4 - Performance)
         noise_buf.resize(num_samples, std::vector<Control>(horizon));
@@ -361,7 +361,7 @@ private:
         double w_prog_eff = is_reversing ? 0.0 : w_progress;
 
         std::normal_distribution<double> dist_v(0.0, 1.0);
-        std::normal_distribution<double> dist_s(0.0, 0.4);
+        std::normal_distribution<double> dist_s(0.0, 0.4); // [TUNE] Nhiễu vô lăng: Nếu xe lạng lách quá bạo lực, giảm xuống 0.15 hoặc 0.2
         for (int n = 0; n < num_samples; n++) {
             for (int t = 0; t < horizon; t++) {
                 noise_buf[n][t].v = dist_v(rng);
@@ -503,6 +503,10 @@ private:
         }
         nominal_control[horizon-1].v = current_target_speed; // Bug 6 - Logic Fix
         nominal_control[horizon-1].steer = nominal_control[horizon-2].steer * 0.5;
+
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, 
+            "MPPI | min_cost: %7.1f | target_v: %.2f | v_cmd: %.2f | steer: %6.3f", 
+            min_cost, current_target_speed, nominal_control[0].v, nominal_control[0].steer);
     }
 
     void publish_drive(double v, double steer) {
