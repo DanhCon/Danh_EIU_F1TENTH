@@ -77,13 +77,13 @@ class MPPIController(Node):
         # Tốc độ mục tiêu lớn nhất trên đường thẳng (m/s)
         self.target_speed = 5.0  # Tăng tốc độ mục tiêu trên đường thẳng lên 5.0 m/s
 
-        # ── Tham số curvature-based speed profiling ─────────────────
-        self.min_speed_curve = 1.8     # Tăng tốc độ tối thiểu khi vào cua gắt lên 1.8 m/s để duy trì động năng
-        self.curve_threshold = 0.35    # Ngưỡng độ cong (rad/m) bắt đầu giảm tốc (tăng từ 0.28 lên 0.35 để cho phép cua nhanh hơn)
-        self.lookahead_wps   = 15      # Tăng số lượng waypoints nhìn trước lên 15 để phanh sớm trước cua từ tốc độ cao
+        # Tham số curvature-based speed profiling
+        self.min_speed_curve = 1.8
+        self.curve_threshold = 0.35
+        self.lookahead_wps   = 75      # Đã nhân 5 (trước là 15) để nhìn trước đủ xa với điểm dày đặc
 
         # Cửa sổ waypoint cục bộ
-        self.wp_window = 50  # Tăng để có đủ waypoints nhìn trước
+        self.wp_window = 150  # Tăng lên 150 (nhìn xa 15 mét) để bao trọn quỹ đạo 6.25m của MPPI
 
         # ── Chuỗi điều khiển danh nghĩa U: (T, 2) → [speed, steer] ──
         self.nominal_control = np.zeros((self.horizon, 2))
@@ -373,8 +373,11 @@ class MPPIController(Node):
 
         # ── Khoảng cách mỗi rollout đến mỗi waypoint ────────────────
         # OPT-5: Sử dụng np.einsum để tính bình phương khoảng cách, tránh phép tính sqrt thừa trên mảng lớn
-        delta_wp  = pts[:, :, None, :] - local_wps[None, None, :, :]  # (N,T,W,2)
-        sq_wp     = np.einsum("ntwk,ntwk->ntw", delta_wp, delta_wp)    # (N,T,W)
+        # Vì wp_window đã tăng lên 150 điểm, tính toán khoảng cách 3D (N,T,W) sẽ ngốn rất nhiều RAM gây tụt Hz.
+        # Ta lấy mỗi điểm thứ 3 (downsample) để tính toán, vừa giữ được độ mượt vừa đảm bảo Hz cao.
+        sparse_wps = local_wps[::3]
+        delta_wp  = pts[:, :, None, :] - sparse_wps[None, None, :, :]  # (N,T,W/3,2)
+        sq_wp     = np.einsum("ntwk,ntwk->ntw", delta_wp, delta_wp)    # (N,T,W/3)
         min_wi    = np.argmin(sq_wp, axis=2)                           # (N,T)  int
         min_sq    = np.take_along_axis(sq_wp, min_wi[:, :, None], axis=2)[:, :, 0]  # (N,T)
 
@@ -477,7 +480,6 @@ class MPPIController(Node):
         # ── 7. Terminal cost (tập trung tại bước cuối cùng t=T - BUG-F) ──
         final_pts = state_rollouts[:, -1, :2]   # (N, 2)
         
-        # FIX: tách weight ra ngoài để không bị double-weight
         dx_f = final_pts[:, 0:1] - local_wps[None, :, 0]
         dy_f = final_pts[:, 1:2] - local_wps[None, :, 1]
         dist_f = np.sqrt(dx_f**2 + dy_f**2)
