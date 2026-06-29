@@ -71,8 +71,8 @@ class MPPIController(Node):
         self.w_heading  = 15.0  # Bám hướng tiếp tuyến
 
         # Bán kính an toàn của xe (m)
-        self.robot_radius   = 0.35
-        self.danger_radius  = 1.10  # Tăng lên 1.10m để phát hiện và phản ứng sớm hơn với chướng ngại vật
+        self.robot_radius   = 0.25  # Giảm xuống 0.25m (vật cản ảo có đường kính 50cm)
+        self.danger_radius  = 0.75  # Giảm tương ứng để xe không báo động giả từ quá xa
 
         # Tốc độ mục tiêu lớn nhất trên đường thẳng (m/s)
         self.target_speed = 5.0  # Tăng tốc độ mục tiêu trên đường thẳng lên 5.0 m/s
@@ -290,9 +290,8 @@ class MPPIController(Node):
         v, d     = controls[:, 0], controls[:, 1]
         dt       = self.dt
 
-        # Mô phỏng trượt (understeer) ở tốc độ cao: giảm hiệu quả đánh lái trong mô hình dự báo
-        # để bộ điều khiển MPPI tự động tăng góc lái thực tế bù vào.
-        slip_factor = 1.0 / (1.0 + np.abs(v) * 0.15)
+        # Mô phỏng trượt (understeer) ở tốc độ cao: TẠM TẮT để xe đánh lái gắt như mppi_nhat
+        slip_factor = 1.0
         d_eff = d * slip_factor
 
         return np.stack(
@@ -801,7 +800,8 @@ class MPPIController(Node):
         for t in range(self.horizon):
             v, d   = self.nominal_control[t]
             x, y, th = traj[t]
-            slip_factor = 1.0 / (1.0 + np.abs(v) * 0.15)
+            # TẠM TẮT understeer để xe đánh lái gắt
+            slip_factor = 1.0
             d_eff = d * slip_factor
             traj[t + 1] = [
                 x  + v * np.cos(th) * self.dt,
