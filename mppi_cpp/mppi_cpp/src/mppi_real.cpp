@@ -365,7 +365,7 @@ private:
         if (!is_reversing && (front_blocked || is_stuck)) {
             is_reversing = true;
             reverse_end_time = now_s + 3.2;
-            for (auto& c : nominal_control) { c.v = -0.8; c.steer = 0.0; } // Flush ONCE
+            for (auto& c : nominal_control) { c.v = 0.0; c.steer = 0.0; } // Flush ONCE (Temp Disable Reverse)
         }
         if (is_reversing && now_s > reverse_end_time) {
             is_reversing = false;
@@ -373,9 +373,9 @@ private:
             for (auto& c : nominal_control) { c.v = current_target_speed; c.steer = 0.0; } // Flush ONCE
         }
 
-        double dynamic_min_speed = is_reversing ? -1.5 : -0.3; // Bug 2 - Logic
-        double dynamic_max_speed = is_reversing ? -0.3 : 5.0; // [FIX] Max physical speed
-        if (is_reversing) current_target_speed = -0.8;
+        double dynamic_min_speed = is_reversing ? 0.0 : -0.3; // Temp disable reverse // Bug 2 - Logic
+        double dynamic_max_speed = is_reversing ? 0.0 : 5.0; // Temp disable reverse // [FIX] Max physical speed
+        if (is_reversing) current_target_speed = 0.0;
 
         double w_hdg_eff = w_heading; 
         double w_prog_eff = is_reversing ? 0.0 : w_progress;
