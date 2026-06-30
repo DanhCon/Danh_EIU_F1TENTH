@@ -387,7 +387,8 @@ private:
         if (!is_stopped && (front_blocked || is_stuck)) {
             is_stopped = true;
             stop_end_time = now_s + stop_timer_duration;
-            for (auto& c : nominal_control) { c.v = 0.0; c.steer = 0.0; } // Flush ONCE (Temp Disable Reverse)
+            double escape_steer = (rng() % 2 == 0) ? MAX_STEER_RAD : -MAX_STEER_RAD;
+            for (auto& c : nominal_control) { c.v = 0.5; c.steer = escape_steer; } // Flush ONCE (Escape Maneuver)
         }
         if (is_stopped && now_s > stop_end_time) {
             is_stopped = false;
@@ -395,9 +396,9 @@ private:
             for (auto& c : nominal_control) { c.v = current_target_speed; c.steer = 0.0; } // Flush ONCE
         }
 
-        double dynamic_min_speed = is_stopped ? 0.0 : -0.3; // Temp disable reverse // Bug 2 - Logic
-        double dynamic_max_speed = is_stopped ? 0.0 : 5.0; // Temp disable reverse // [FIX] Max physical speed
-        if (is_stopped) current_target_speed = 0.0;
+        double dynamic_min_speed = 0.0; // Xe KHONG bao gio duoc phep lui // Bug 2 - Logic
+        double dynamic_max_speed = is_stopped ? 0.5 : target_speed_max; // Nho len (Creep) // [FIX] Max physical speed
+        if (is_stopped) current_target_speed = 0.5;
 
         double w_hdg_eff = w_heading; 
         double w_prog_eff = is_stopped ? 0.0 : w_progress;
@@ -443,7 +444,7 @@ private:
                 track_cost += min_wp_d2; // Bug 2 - Perf
                 global_idx = local_idxs[min_wi];
 
-                double ref_hdg = is_stopped ? normalize_angle(local_hdgs[min_wi] + M_PI) : local_hdgs[min_wi]; // Bug 4 - Logic
+                double ref_hdg = local_hdgs[min_wi]; // [FIX] Xoa logic doi huong vo nghia // Bug 4 - Logic
                 double err = normalize_angle(th - ref_hdg);
                 hdg_cost += std::pow(err, 2);
 
