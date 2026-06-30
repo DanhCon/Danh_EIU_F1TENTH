@@ -107,8 +107,8 @@ private:
     int speed_lookahead_wps = 50;       // Tam nhin xa de phanh som (so luong waypoints)
     double danger_radius = 1.2;         // Khoang cach bao dong vat can
     double collision_cost = 1000.0;     // Hinh phat khi cham tuong
-    double stuck_timer_thresh = 0.8;    // Thoi gian xac nhan xe bi ket (giay)
-    double stop_timer_duration = 3.2;   // Thoi gian dung im khi gap vat can (giay)
+    double stuck_timer_thresh = 1.0;    // Thoi gian xac nhan xe bi ket (giay)
+    double stop_timer_duration = 1.0;   // Thoi gian dung im khi gap vat can (giay)
     int horizon, num_samples;
     double dt, lambda_;
     double w_track, w_progress, w_heading, w_obs, w_smooth, w_speed;
@@ -347,10 +347,13 @@ private:
             current_target_speed = std::max(0.0, current_target_speed * obs_speed_factor); // Khong lui 
         }
         
+        current_target_speed = std::min(last_target_speed + max_accel * dt, current_target_speed);
         current_target_speed = std::max(last_target_speed - max_decel * dt, current_target_speed);
         last_target_speed = current_target_speed;
 
         bool front_blocked = false;
+        double sum_dy = 0.0;
+        int count = 0;
         // TTL Check (Bug 5 - Logic)
         if (obs_stamp.nanoseconds() != 0 && (now_s - obs_stamp.seconds() < 0.5)) {
             double braking_dist = std::max(0.8, v_cur * v_cur / 6.0 + 0.3); // v^2/(2a) + margin
@@ -365,7 +368,8 @@ private:
                 double dy_local = dx * std::sin(-theta0) + dy * std::cos(-theta0);
                 if (dx_local > 0.1 && dx_local < braking_dist && std::abs(dy_local) < 0.35) {
                     front_blocked = true;
-                    break;
+                    sum_dy += dy_local;
+                    count++;
                 }
             }
         }
@@ -387,7 +391,12 @@ private:
         if (!is_stopped && (front_blocked || is_stuck)) {
             is_stopped = true;
             stop_end_time = now_s + stop_timer_duration;
-            double escape_steer = (rng() % 2 == 0) ? MAX_STEER_RAD : -MAX_STEER_RAD;
+            double escape_steer;
+            if (count > 0) {
+                escape_steer = (sum_dy > 0) ? -MAX_STEER_RAD : MAX_STEER_RAD; // Ne vat can
+            } else {
+                escape_steer = (rng() % 2 == 0) ? MAX_STEER_RAD : -MAX_STEER_RAD;
+            }
             for (auto& c : nominal_control) { c.v = 0.5; c.steer = escape_steer; } // Flush ONCE (Escape Maneuver)
         }
         if (is_stopped && now_s > stop_end_time) {
@@ -469,6 +478,7 @@ private:
                 if (min_d < 0.2) obs_cost += collision_cost;
 
                 if (t == horizon - 1) {
+                    double w_hdg_eff = is_stopped ? 5.0 : w_heading;
                     double term_cost = 3.0 * w_track * min_wp_d2;
                     term_cost += 3.0 * w_hdg_eff * std::pow(err, 2); // Bug 8 - Logic
                     

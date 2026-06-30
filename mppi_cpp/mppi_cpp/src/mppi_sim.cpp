@@ -36,7 +36,7 @@ public:
         num_samples = this->get_parameter("num_samples").as_int();
         dt = this->get_parameter("dt").as_double();
         
-        lambda_ = 60.0; // [TUNE] Nhiệt độ Softmax: Càng lớn -> trung bình quỹ đạo càng đều. Càng nhỏ -> tham lam quỹ đạo tốt nhất
+        lambda_ = 80.0; // [TUNE] Nhiệt độ Softmax: Càng lớn -> trung bình quỹ đạo càng đều. Càng nhỏ -> tham lam quỹ đạo tốt nhất
         
         w_track = 10.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).
         w_progress = 5.0;  // [TUNE] Đi về phía trước.
@@ -87,7 +87,7 @@ private:
     static constexpr double WHEELBASE = 0.33;
     static constexpr double MAX_STEER_RAD = 0.35;
     // --- Tunable Parameters ---
-    double target_speed_max = 1.0;      // Toc do toi da
+    double target_speed_max = 2.0;      // Toc do toi da
     double min_speed_curve = 1.0;       // Toc do thap nhat khi bo cua gat
     double max_decel = 4.0;             // Gia toc phanh (m/s^2)
     double max_accel = 1.0;             // Gia toc tang toc (m/s^2)
@@ -95,8 +95,8 @@ private:
     int speed_lookahead_wps = 40;       // Tam nhin xa de phanh som (so luong waypoints)
     double danger_radius = 0.4;         // Khoang cach bao dong vat can
     double collision_cost = 100.0;     // Hinh phat khi cham tuong
-    double stuck_timer_thresh = 0.8;    // Thoi gian xac nhan xe bi ket (giay)
-    double stop_timer_duration = 3.2;   // Thoi gian dung im khi gap vat can (giay)
+    double stuck_timer_thresh = 1.0;    // Thoi gian xac nhan xe bi ket (giay)
+    double stop_timer_duration = 1.0;   // Thoi gian dung im khi gap vat can (giay)
     int horizon, num_samples;
     double dt, lambda_;
     double w_track, w_progress, w_heading, w_obs, w_smooth, w_speed;
@@ -321,7 +321,7 @@ private:
 
         // Curvature Profiling
         double max_c = 0.0;
-        for (int i = 0; i < 15; i++) {
+        for (int i = 0; i < speed_lookahead_wps; i++) {
             int idx = (nearest_wp + i) % waypoints.size();
             double c = std::abs(waypoint_curvatures[idx]);
             if (c > max_c) max_c = c;
@@ -339,10 +339,13 @@ private:
             current_target_speed = std::max(0.0, current_target_speed * obs_speed_factor); // Khong lui 
         }
         
+        current_target_speed = std::min(last_target_speed + max_accel * dt, current_target_speed);
         current_target_speed = std::max(last_target_speed - max_decel * dt, current_target_speed);
         last_target_speed = current_target_speed;
 
         bool front_blocked = false;
+        double sum_dy = 0.0;
+        int count = 0;
         // TTL Check (Bug 5 - Logic)
         if (obs_stamp.nanoseconds() != 0 && (now_s - obs_stamp.seconds() < 0.5)) {
             double braking_dist = std::max(0.8, v_cur * v_cur / 6.0 + 0.3); // v^2/(2a) + margin
@@ -357,7 +360,8 @@ private:
                 double dy_local = dx * std::sin(-theta0) + dy * std::cos(-theta0);
                 if (dx_local > 0.1 && dx_local < braking_dist && std::abs(dy_local) < 0.35) {
                     front_blocked = true;
-                    break;
+                    sum_dy += dy_local;
+                    count++;
                 }
             }
         }
@@ -379,7 +383,12 @@ private:
         if (!is_stopped && (front_blocked || is_stuck)) {
             is_stopped = true;
             stop_end_time = now_s + stop_timer_duration;
-            double escape_steer = (rng() % 2 == 0) ? MAX_STEER_RAD : -MAX_STEER_RAD;
+            double escape_steer;
+            if (count > 0) {
+                escape_steer = (sum_dy > 0) ? -MAX_STEER_RAD : MAX_STEER_RAD; // Ne vat can
+            } else {
+                escape_steer = (rng() % 2 == 0) ? MAX_STEER_RAD : -MAX_STEER_RAD;
+            }
             for (auto& c : nominal_control) { c.v = 0.5; c.steer = escape_steer; } // Flush ONCE (Escape Maneuver)
         }
         if (is_stopped && now_s > stop_end_time) {
@@ -461,6 +470,7 @@ private:
                 if (min_d < 0.2) obs_cost += collision_cost;
 
                 if (t == horizon - 1) {
+                    double w_hdg_eff = is_stopped ? 5.0 : w_heading;
                     double term_cost = 3.0 * w_track * min_wp_d2;
                     term_cost += 3.0 * w_hdg_eff * std::pow(err, 2); // Bug 8 - Logic
                     
@@ -550,7 +560,7 @@ private:
         nominal_control[horizon-1].steer = nominal_control[horizon-2].steer * 0.5;
 
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 50, 
-            "MPPI | min: %7.1f | w_sum: %7.2f | v: %.2f | s: %6.3f | blk:%d stk:%d rev:%d", 
+            "MPPI | min: %7.1f | w_sum: %7.2f | v: %.2f | s: %6.3f | blk:%d stk:%d stop:%d", 
             min_cost, final_w_sum, nominal_control[0].v, nominal_control[0].steer, front_blocked, is_stuck, is_stopped);
     }
 
