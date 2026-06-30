@@ -348,7 +348,7 @@ private:
         int count = 0;
         // TTL Check (Bug 5 - Logic)
         if (obs_stamp.nanoseconds() != 0 && (now_s - obs_stamp.seconds() < 0.5)) {
-            double braking_dist = std::max(0.8, v_cur * v_cur / 6.0 + 0.3); // v^2/(2a) + margin
+            double braking_dist = std::max(0.8, v_cur * v_cur / 6.0 ); // v^2/(2a) + margin
             double pre_bound = braking_dist + 0.5;
             for (const auto& o : obs_snapshot) {
                 double dx = o.x - x0;
@@ -370,6 +370,7 @@ private:
         bool is_stuck = false;
         if (v_cur < 0.05 && std::abs(nominal_control[0].v) > 0.3) {
             if (!is_stuck_timer_active) {
+                RCLCPP_WARN(this->get_logger(), "Watchdog Timer Started: v_cur=%.2f < 0.05 while cmd_v=%.2f > 0.3", v_cur, nominal_control[0].v);
                 stuck_start_time = now_s;
                 is_stuck_timer_active = true;
             } else if (now_s - stuck_start_time > stuck_timer_thresh) {
@@ -381,6 +382,7 @@ private:
 
         // Reverse logic (Bug 1 - Logic)
         if (!is_stopped && (front_blocked || is_stuck)) {
+            RCLCPP_WARN(this->get_logger(), "EMERGENCY STOP TRIGGERED! front_blocked:%d, is_stuck:%d. Escaping...", front_blocked, is_stuck);
             is_stopped = true;
             stop_end_time = now_s + stop_timer_duration;
             double escape_steer;
@@ -392,6 +394,7 @@ private:
             for (auto& c : nominal_control) { c.v = 0.5; c.steer = escape_steer; } // Flush ONCE (Escape Maneuver)
         }
         if (is_stopped && now_s > stop_end_time) {
+            RCLCPP_INFO(this->get_logger(), "ESCAPE COMPLETED. Resuming normal operations.");
             is_stopped = false;
             is_stuck_timer_active = false;
             for (auto& c : nominal_control) { c.v = current_target_speed; c.steer = 0.0; } // Flush ONCE
@@ -559,9 +562,9 @@ private:
         nominal_control[horizon-1].v = current_target_speed; // Bug 6 - Logic Fix
         nominal_control[horizon-1].steer = nominal_control[horizon-2].steer * 0.5;
 
-        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 50, 
-            "MPPI | min: %7.1f | w_sum: %7.2f | v: %.2f | s: %6.3f | blk:%d stk:%d stop:%d", 
-            min_cost, final_w_sum, nominal_control[0].v, nominal_control[0].steer, front_blocked, is_stuck, is_stopped);
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 100, 
+            "MPPI | min:%6.0f | max_c:%.2f | tgt_v:%.2f | cur_v:%.2f | cmd_v:%.2f | cmd_s:%5.2f | blk:%d stk:%d stop:%d", 
+            min_cost, max_c, current_target_speed, v_cur, nominal_control[0].v, nominal_control[0].steer, front_blocked, is_stuck, is_stopped);
     }
 
     void publish_best_trajectory() {

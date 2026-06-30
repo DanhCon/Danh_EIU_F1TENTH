@@ -378,6 +378,7 @@ private:
         bool is_stuck = false;
         if (v_cur < 0.05 && current_target_speed > 0.5) { // [FIX] Dung target thay vi v_cmd de tranh reset timer
             if (!is_stuck_timer_active) {
+                RCLCPP_WARN(this->get_logger(), "Watchdog Timer Started: v_cur=%.2f < 0.05 while cmd_v=%.2f > 0.3", v_cur, nominal_control[0].v);
                 stuck_start_time = now_s;
                 is_stuck_timer_active = true;
             } else if (now_s - stuck_start_time > stuck_timer_thresh) {
@@ -389,6 +390,7 @@ private:
 
         // Reverse logic (Bug 1 - Logic)
         if (!is_stopped && (front_blocked || is_stuck)) {
+            RCLCPP_WARN(this->get_logger(), "EMERGENCY STOP TRIGGERED! front_blocked:%d, is_stuck:%d. Escaping...", front_blocked, is_stuck);
             is_stopped = true;
             stop_end_time = now_s + stop_timer_duration;
             double escape_steer;
@@ -400,6 +402,7 @@ private:
             for (auto& c : nominal_control) { c.v = 0.5; c.steer = escape_steer; } // Flush ONCE (Escape Maneuver)
         }
         if (is_stopped && now_s > stop_end_time) {
+            RCLCPP_INFO(this->get_logger(), "ESCAPE COMPLETED. Resuming normal operations.");
             is_stopped = false;
             is_stuck_timer_active = false;
             for (auto& c : nominal_control) { c.v = current_target_speed; c.steer = 0.0; } // Flush ONCE
