@@ -87,16 +87,16 @@ private:
     static constexpr double WHEELBASE = 0.33;
     static constexpr double MAX_STEER_RAD = 0.418;
     // --- Tunable Parameters ---
-    double target_speed_max;
-    double min_speed_curve;
-    double max_decel;
-    double max_accel;
-    double curve_thresh;
-    int speed_lookahead_wps;
-    double danger_radius;
-    double collision_cost;
-    double stuck_timer_thresh;
-    double stop_timer_duration;
+    double target_speed_max = 5.0;      // Toc do toi da
+    double min_speed_curve = 1.4;       // Toc do thap nhat khi bo cua gat
+    double max_decel = 4.0;             // Gia toc phanh (m/s^2)
+    double max_accel = 2.0;             // Gia toc tang toc (m/s^2)
+    double curve_thresh = 0.35;         // Nguong phat hien goc cua (curvature)
+    int speed_lookahead_wps = 50;       // Tam nhin xa de phanh som (so luong waypoints)
+    double danger_radius = 1.2;         // Khoang cach bao dong vat can
+    double collision_cost = 1000.0;     // Hinh phat khi cham tuong
+    double stuck_timer_thresh = 0.8;    // Thoi gian xac nhan xe bi ket (giay)
+    double stop_timer_duration = 3.2;   // Thoi gian dung im khi gap vat can (giay)
     int horizon, num_samples;
     double dt, lambda_;
     double w_track, w_progress, w_heading, w_obs, w_smooth, w_speed;
