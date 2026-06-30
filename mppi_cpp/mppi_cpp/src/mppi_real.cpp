@@ -45,6 +45,18 @@ public:
         w_smooth = 1.5;
         w_speed = 8.0;
 
+        // --- Tunable Parameters Init ---
+        target_speed_max = 5.0;
+        min_speed_curve = 1.4;
+        max_decel = 4.0;
+        max_accel = 2.0;
+        curve_thresh = 0.35;
+        speed_lookahead_wps = 50;
+        danger_radius = 1.2;
+        collision_cost = 1000.0;
+        stuck_timer_thresh = 0.8;
+        stop_timer_duration = 3.2;
+
         // Pre-allocate buffers (Bug 4 - Performance)
         noise_buf.resize(num_samples, std::vector<Control>(horizon));
         costs_buf.resize(num_samples, 0.0);
@@ -86,6 +98,17 @@ public:
 private:
     static constexpr double WHEELBASE = 0.33;
     static constexpr double MAX_STEER_RAD = 0.418;
+    // --- Tunable Parameters ---
+    double target_speed_max;
+    double min_speed_curve;
+    double max_decel;
+    double max_accel;
+    double curve_thresh;
+    int speed_lookahead_wps;
+    double danger_radius;
+    double collision_cost;
+    double stuck_timer_thresh;
+    double stop_timer_duration;
     int horizon, num_samples;
     double dt, lambda_;
     double w_track, w_progress, w_heading, w_obs, w_smooth, w_speed;
@@ -125,10 +148,10 @@ private:
     std::shared_ptr<tf2_ros::TransformListener> tf_listener;
     std::mt19937 rng;
 
-    bool is_reversing = false;
+    bool is_stopped = false;
     bool is_stuck_timer_active = false; // Bug 3 - Logic
     double stuck_start_time = 0.0;
-    double reverse_end_time = 0.0; // Bug 4 - Logic
+    double stop_end_time = 0.0; // Bug 4 - Logic
     
     double last_best_obs_cost = 0.0;
     double last_target_speed = 0.0;
@@ -306,7 +329,7 @@ private:
 
         // Curvature Profiling
         double max_c = 0.0;
-        for (int i = 0; i < 50; i++) { // [FIX] Tang tam nhin de phanh som (giai quyet loop spiral)
+        for (int i = 0; i < speed_lookahead_wps; i++) { // [FIX] Tang tam nhin de phanh som (giai quyet loop spiral)
             int idx = (nearest_wp + i) % waypoints.size();
             double c = std::abs(waypoint_curvatures[idx]);
             if (c > max_c) max_c = c;
@@ -314,7 +337,7 @@ private:
         
         double target_speed = 2.0;
         double min_speed_curve = 1.8;
-        double curve_thresh = 0.35;
+        
         double speed_factor = max_c > curve_thresh ? std::max(0.0, 1.0 - (max_c - curve_thresh) / curve_thresh) : 1.0;
         double current_target_speed = min_speed_curve + (target_speed - min_speed_curve) * speed_factor;
 
@@ -323,11 +346,10 @@ private:
             double obs_speed_factor = std::max(0.3, 1.0 - last_best_obs_cost / 200.0);
             current_target_speed = std::max(-0.3, current_target_speed * obs_speed_factor); 
         }
-        double max_decel = 4.0;
+        
         current_target_speed = std::max(last_target_speed - max_decel * dt, current_target_speed);
         last_target_speed = current_target_speed;
 
-        const double danger_radius = 1.2;
         bool front_blocked = false;
         // TTL Check (Bug 5 - Logic)
         if (obs_stamp.nanoseconds() != 0 && (now_s - obs_stamp.seconds() < 0.5)) {
@@ -354,7 +376,7 @@ private:
             if (!is_stuck_timer_active) {
                 stuck_start_time = now_s;
                 is_stuck_timer_active = true;
-            } else if (now_s - stuck_start_time > 0.8) {
+            } else if (now_s - stuck_start_time > stuck_timer_thresh) {
                 is_stuck = true;
             }
         } else {
@@ -362,23 +384,23 @@ private:
         }
 
         // Reverse logic (Bug 1 - Logic)
-        if (!is_reversing && (front_blocked || is_stuck)) {
-            is_reversing = true;
-            reverse_end_time = now_s + 3.2;
+        if (!is_stopped && (front_blocked || is_stuck)) {
+            is_stopped = true;
+            stop_end_time = now_s + stop_timer_duration;
             for (auto& c : nominal_control) { c.v = 0.0; c.steer = 0.0; } // Flush ONCE (Temp Disable Reverse)
         }
-        if (is_reversing && now_s > reverse_end_time) {
-            is_reversing = false;
+        if (is_stopped && now_s > stop_end_time) {
+            is_stopped = false;
             is_stuck_timer_active = false;
             for (auto& c : nominal_control) { c.v = current_target_speed; c.steer = 0.0; } // Flush ONCE
         }
 
-        double dynamic_min_speed = is_reversing ? 0.0 : -0.3; // Temp disable reverse // Bug 2 - Logic
-        double dynamic_max_speed = is_reversing ? 0.0 : 5.0; // Temp disable reverse // [FIX] Max physical speed
-        if (is_reversing) current_target_speed = 0.0;
+        double dynamic_min_speed = is_stopped ? 0.0 : -0.3; // Temp disable reverse // Bug 2 - Logic
+        double dynamic_max_speed = is_stopped ? 0.0 : 5.0; // Temp disable reverse // [FIX] Max physical speed
+        if (is_stopped) current_target_speed = 0.0;
 
         double w_hdg_eff = w_heading; 
-        double w_prog_eff = is_reversing ? 0.0 : w_progress;
+        double w_prog_eff = is_stopped ? 0.0 : w_progress;
 
         std::normal_distribution<double> dist_v(0.0, 1.5);
         std::normal_distribution<double> dist_s(0.0, 0.4);
@@ -421,7 +443,7 @@ private:
                 track_cost += min_wp_d2; // Bug 2 - Perf
                 global_idx = local_idxs[min_wi];
 
-                double ref_hdg = is_reversing ? normalize_angle(local_hdgs[min_wi] + M_PI) : local_hdgs[min_wi]; // Bug 4 - Logic
+                double ref_hdg = is_stopped ? normalize_angle(local_hdgs[min_wi] + M_PI) : local_hdgs[min_wi]; // Bug 4 - Logic
                 double err = normalize_angle(th - ref_hdg);
                 hdg_cost += std::pow(err, 2);
 
@@ -443,7 +465,7 @@ private:
                     if (d < min_d) min_d = d;
                 }
                 if (min_d < danger_radius) obs_cost += std::pow(danger_radius - min_d, 2);
-                if (min_d < 0.2) obs_cost += 1000.0;
+                if (min_d < 0.2) obs_cost += collision_cost;
 
                 if (t == horizon - 1) {
                     double term_cost = 3.0 * w_track * min_wp_d2;
