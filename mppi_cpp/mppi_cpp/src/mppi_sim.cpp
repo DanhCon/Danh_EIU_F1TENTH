@@ -36,13 +36,13 @@ public:
         num_samples = this->get_parameter("num_samples").as_int();
         dt = this->get_parameter("dt").as_double();
         
-        lambda_ = 50.0; // [TUNE] Nhiệt độ Softmax: Càng lớn -> trung bình quỹ đạo càng đều. Càng nhỏ -> tham lam quỹ đạo tốt nhất
+        lambda_ = 60.0; // [TUNE] Nhiệt độ Softmax: Càng lớn -> trung bình quỹ đạo càng đều. Càng nhỏ -> tham lam quỹ đạo tốt nhất
         
-        w_track = 100.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).
+        w_track = 10.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).
         w_progress = 5.0;  // [TUNE] Đi về phía trước.
         w_heading = 40.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
         w_obs = 100.0;     // [TUNE] Né vật cản.
-        w_smooth = 5.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
+        w_smooth = 20.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
         w_speed = 8.0;     // [TUNE] Phạt sai lệch tốc độ.
 
         // Pre-allocate buffers (Bug 4 - Performance)
@@ -85,16 +85,16 @@ public:
 
 private:
     static constexpr double WHEELBASE = 0.33;
-    static constexpr double MAX_STEER_RAD = 0.418;
+    static constexpr double MAX_STEER_RAD = 0.35;
     // --- Tunable Parameters ---
-    double target_speed_max = 5.0;      // Toc do toi da
-    double min_speed_curve = 1.4;       // Toc do thap nhat khi bo cua gat
+    double target_speed_max = 1.0;      // Toc do toi da
+    double min_speed_curve = 1.0;       // Toc do thap nhat khi bo cua gat
     double max_decel = 4.0;             // Gia toc phanh (m/s^2)
-    double max_accel = 2.0;             // Gia toc tang toc (m/s^2)
-    double curve_thresh = 0.35;         // Nguong phat hien goc cua (curvature)
-    int speed_lookahead_wps = 50;       // Tam nhin xa de phanh som (so luong waypoints)
-    double danger_radius = 1.2;         // Khoang cach bao dong vat can
-    double collision_cost = 1000.0;     // Hinh phat khi cham tuong
+    double max_accel = 1.0;             // Gia toc tang toc (m/s^2)
+    double curve_thresh = 0.3;         // Nguong phat hien goc cua (curvature)
+    int speed_lookahead_wps = 40;       // Tam nhin xa de phanh som (so luong waypoints)
+    double danger_radius = 0.4;         // Khoang cach bao dong vat can
+    double collision_cost = 100.0;     // Hinh phat khi cham tuong
     double stuck_timer_thresh = 0.8;    // Thoi gian xac nhan xe bi ket (giay)
     double stop_timer_duration = 3.2;   // Thoi gian dung im khi gap vat can (giay)
     int horizon, num_samples;
@@ -327,7 +327,7 @@ private:
             if (c > max_c) max_c = c;
         }
         
-        double target_speed = 3.0;
+        double target_speed = target_speed_max;
         
         
         double speed_factor = max_c > curve_thresh ? std::max(0.0, 1.0 - (max_c - curve_thresh) / curve_thresh) : 1.0;
@@ -336,7 +336,7 @@ private:
         // Rate limit deceleration (Bug 6 - Logic)
         if (last_best_obs_cost > 0.0) {
             double obs_speed_factor = std::max(0.3, 1.0 - last_best_obs_cost / 200.0);
-            current_target_speed = std::max(-0.3, current_target_speed * obs_speed_factor); 
+            current_target_speed = std::max(0.0, current_target_speed * obs_speed_factor); // Khong lui 
         }
         
         current_target_speed = std::max(last_target_speed - max_decel * dt, current_target_speed);
@@ -389,14 +389,14 @@ private:
         }
 
         double dynamic_min_speed = 0.0; // Xe KHONG bao gio duoc phep lui // Bug 2 - Logic
-        double dynamic_max_speed = is_stopped ? 0.0 : 3.0; // Temp disable reverse // [FIX] Max physical speed
+        double dynamic_max_speed = is_stopped ? 0.5 : target_speed_max;
         if (is_stopped) current_target_speed = 0.5;
 
         double w_hdg_eff = w_heading; 
         double w_prog_eff = is_stopped ? 0.0 : w_progress;
 
         std::normal_distribution<double> dist_v(0.0, 1.5);
-        std::normal_distribution<double> dist_s(0.0, 0.2); // [TUNE] Nhiễu vô lăng: Nếu xe lạng lách quá bạo lực, giảm xuống 0.15 hoặc 0.2
+        std::normal_distribution<double> dist_s(0.0, 0.15); // [TUNE] Nhiễu vô lăng: Nếu xe lạng lách quá bạo lực, giảm xuống 0.15 hoặc 0.2
         for (int n = 0; n < num_samples; n++) {
             for (int t = 0; t < horizon; t++) {
                 noise_buf[n][t].v = dist_v(rng);

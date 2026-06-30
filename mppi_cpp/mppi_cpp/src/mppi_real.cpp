@@ -335,7 +335,7 @@ private:
             if (c > max_c) max_c = c;
         }
         
-        double target_speed = 2.0;
+        double target_speed = target_speed_max;
         double min_speed_curve = 1.8;
         
         double speed_factor = max_c > curve_thresh ? std::max(0.0, 1.0 - (max_c - curve_thresh) / curve_thresh) : 1.0;
@@ -344,7 +344,7 @@ private:
         // Rate limit deceleration (Bug 6 - Logic)
         if (last_best_obs_cost > 0.0) {
             double obs_speed_factor = std::max(0.3, 1.0 - last_best_obs_cost / 200.0);
-            current_target_speed = std::max(-0.3, current_target_speed * obs_speed_factor); 
+            current_target_speed = std::max(0.0, current_target_speed * obs_speed_factor); // Khong lui 
         }
         
         current_target_speed = std::max(last_target_speed - max_decel * dt, current_target_speed);
