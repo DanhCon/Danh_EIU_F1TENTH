@@ -40,7 +40,7 @@ public:
         
         w_track = 100.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).
         w_progress = 5.0;  // [TUNE] Đi về phía trước.
-        w_heading = 2.0; // [FIX] Giam manh de xe dam cut corner  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
+        w_heading = 40.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
         w_obs = 100.0;     // [TUNE] Né vật cản.
         w_smooth = 5.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
         w_speed = 8.0;     // [TUNE] Phạt sai lệch tốc độ.
@@ -165,11 +165,7 @@ private:
 
     void load_waypoints(const std::string& path) {
         std::ifstream file(path);
-        if (!file.is_open()) {
-            RCLCPP_FATAL(this->get_logger(), "Cannot open waypoint CSV: %s", path.c_str());
-            rclcpp::shutdown();
-            return;
-        }
+        if (!file.is_open()) return;
         std::string line;
         while (std::getline(file, line)) {
             if (line.empty() || line[0] == '#') continue;
@@ -186,7 +182,7 @@ private:
         waypoint_headings.resize(w);
         waypoint_curvatures.resize(w);
         for (int i = 0; i < w; i++) {
-            Point2D p1 = waypoints[(i - 5 + w) % w]; // [DOC] 5-point span để mượt hóa curvature
+            Point2D p1 = waypoints[(i - 5 + w) % w];
             Point2D p2 = waypoints[i];
             Point2D p3 = waypoints[(i + 5) % w];
             waypoint_headings[i] = std::atan2(p3.y - p1.y, p3.x - p1.x);
@@ -227,7 +223,7 @@ private:
         }
         
         std::lock_guard<std::mutex> lock(obs_mutex);
-        std::swap(map_obstacles, temp_obs); // [FIX] O(1) Swap
+        map_obstacles = temp_obs;
         obstacle_stamp = this->now();
     }
 
@@ -238,6 +234,7 @@ private:
     }
 
     void control_loop() {
+        double final_w_sum = 0.0;
         double now_s = this->now().seconds();
         if (!odom_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
             publish_drive(0.0, 0.0);
@@ -269,7 +266,7 @@ private:
         rclcpp::Time obs_stamp;
         {
             std::lock_guard<std::mutex> lock(obs_mutex);
-            std::swap(obs_snapshot, map_obstacles); // [FIX] O(1) Swap
+            obs_snapshot = map_obstacles;
             obs_stamp = obstacle_stamp;
         }
 
@@ -313,7 +310,7 @@ private:
 
         // Curvature Profiling
         double max_c = 0.0;
-        for (int i = 0; i < 50; i++) { // [FIX] Tang tam nhin de phanh som (giai quyet loop spiral)
+        for (int i = 0; i < 15; i++) {
             int idx = (nearest_wp + i) % waypoints.size();
             double c = std::abs(waypoint_curvatures[idx]);
             if (c > max_c) max_c = c;
@@ -357,7 +354,7 @@ private:
 
         // Anti-stuck watchdog (Bug 3 - Logic)
         bool is_stuck = false;
-        if (v_cur < 0.05 && current_target_speed > 0.5) { // [FIX] Dung target thay vi v_cmd de tranh reset timer
+        if (v_cur < 0.05 && std::abs(nominal_control[0].v) > 0.3) {
             if (!is_stuck_timer_active) {
                 stuck_start_time = now_s;
                 is_stuck_timer_active = true;
@@ -412,7 +409,7 @@ private:
                 double orig_noise_s = noise_buf[n][t].steer;
                 
                 double pert_v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v + orig_noise_v));
-                double pert_s = std::max(-MAX_STEER_RAD, std::min(MAX_STEER_RAD, nominal_control[t].steer + orig_noise_s));
+                double pert_s = std::max(-MAX_STEER_RAD, std::min(0.418, nominal_control[t].steer + orig_noise_s));
 
                 x += pert_v * std::cos(th) * dt;
                 y += pert_v * std::sin(th) * dt;
@@ -485,7 +482,7 @@ private:
             double orig_v = noise_buf[best_idx][t].v;
             double orig_s = noise_buf[best_idx][t].steer;
             double pert_v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v + orig_v));
-            double pert_s = std::max(-MAX_STEER_RAD, std::min(MAX_STEER_RAD, nominal_control[t].steer + orig_s));
+            double pert_s = std::max(-MAX_STEER_RAD, std::min(0.418, nominal_control[t].steer + orig_s));
             double min_d = 999.0;
             for (const auto& o : obs_snapshot) {
                 double dx = x_b - o.x;
@@ -509,29 +506,26 @@ private:
             weights_buf[n] = w;
             w_sum += w;
         }
+        final_w_sum = w_sum;
 
         if (w_sum > 1e-10) {
-            std::vector<double> num_v_buf(horizon, 0.0);
-            std::vector<double> num_s_buf(horizon, 0.0);
-            for (int n = 0; n < num_samples; n++) {
-                double w = weights_buf[n];
-                for (int t = 0; t < horizon; t++) {
-                    num_v_buf[t] += w * noise_buf[n][t].v;
-                    num_s_buf[t] += w * noise_buf[n][t].steer;
-                }
-            }
             for (int t = 0; t < horizon; t++) {
-                nominal_control[t].v += num_v_buf[t] / w_sum;
-                nominal_control[t].steer += num_s_buf[t] / w_sum;
+                double num_v = 0.0, num_s = 0.0;
+                for (int n = 0; n < num_samples; n++) {
+                    num_v += weights_buf[n] * noise_buf[n][t].v;
+                    num_s += weights_buf[n] * noise_buf[n][t].steer;
+                }
+                nominal_control[t].v += num_v / w_sum;
+                nominal_control[t].steer += num_s / w_sum;
                 
                 nominal_control[t].v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v));
-                nominal_control[t].steer = std::max(-MAX_STEER_RAD, std::min(MAX_STEER_RAD, nominal_control[t].steer));
+                nominal_control[t].steer = std::max(-MAX_STEER_RAD, std::min(0.418, nominal_control[t].steer));
             }
         } else {
             RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "MPPI weight collapse detected (w_sum near 0)! Skipping update.");
             for (int t = 0; t < horizon; t++) {
                 nominal_control[t].v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v));
-                nominal_control[t].steer = std::max(-MAX_STEER_RAD, std::min(MAX_STEER_RAD, nominal_control[t].steer));
+                nominal_control[t].steer = std::max(-MAX_STEER_RAD, std::min(0.418, nominal_control[t].steer));
             }
         }
 
@@ -544,9 +538,9 @@ private:
         nominal_control[horizon-1].v = current_target_speed; // Bug 6 - Logic Fix
         nominal_control[horizon-1].steer = nominal_control[horizon-2].steer * 0.5;
 
-        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, 
-            "MPPI | min_cost: %7.1f | target_v: %.2f | v_cmd: %.2f | steer: %6.3f", 
-            min_cost, current_target_speed, nominal_control[0].v, nominal_control[0].steer);
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 50, 
+            "MPPI | min: %7.1f | w_sum: %7.2f | v: %.2f | s: %6.3f | blk:%d stk:%d rev:%d", 
+            min_cost, final_w_sum, nominal_control[0].v, nominal_control[0].steer, front_blocked, is_stuck, is_reversing);
     }
 
     void publish_best_trajectory() {

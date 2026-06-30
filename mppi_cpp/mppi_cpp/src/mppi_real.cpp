@@ -245,6 +245,7 @@ private:
     }
 
     void control_loop() {
+        double final_w_sum = 0.0;
         double now_s = this->now().seconds();
         // Odom timeout check (Bug 7)
         if (!odom_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
@@ -501,6 +502,7 @@ private:
             weights_buf[n] = w;
             w_sum += w;
         }
+        final_w_sum = w_sum;
 
         if (w_sum > 1e-10) {
             std::vector<double> num_v_buf(horizon, 0.0);
