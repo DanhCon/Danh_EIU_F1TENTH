@@ -38,9 +38,9 @@ public:
         
         lambda_ = 50.0;
         
-        w_track = 20.0;
+        w_track = 15.0;
         w_progress = 5.0;
-        w_heading = 10.0;
+        w_heading = 2.0; // [FIX] Giam manh de xe dam cut corner
         w_obs = 500.0;
         w_smooth = 1.5;
         w_speed = 8.0;
@@ -345,7 +345,7 @@ private:
 
         // Anti-stuck watchdog (Bug 3 - Logic)
         bool is_stuck = false;
-        if (v_cur < 0.05 && std::abs(nominal_control[0].v) > 0.3) {
+        if (v_cur < 0.05 && current_target_speed > 0.5) { // [FIX] Dung target thay vi v_cmd de tranh reset timer
             if (!is_stuck_timer_active) {
                 stuck_start_time = now_s;
                 is_stuck_timer_active = true;

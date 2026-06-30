@@ -40,7 +40,7 @@ public:
         
         w_track = 100.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).
         w_progress = 5.0;  // [TUNE] Đi về phía trước.
-        w_heading = 40.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
+        w_heading = 2.0; // [FIX] Giam manh de xe dam cut corner  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
         w_obs = 100.0;     // [TUNE] Né vật cản.
         w_smooth = 5.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
         w_speed = 8.0;     // [TUNE] Phạt sai lệch tốc độ.
@@ -353,7 +353,7 @@ private:
 
         // Anti-stuck watchdog (Bug 3 - Logic)
         bool is_stuck = false;
-        if (v_cur < 0.05 && std::abs(nominal_control[0].v) > 0.3) {
+        if (v_cur < 0.05 && current_target_speed > 0.5) { // [FIX] Dung target thay vi v_cmd de tranh reset timer
             if (!is_stuck_timer_active) {
                 stuck_start_time = now_s;
                 is_stuck_timer_active = true;
