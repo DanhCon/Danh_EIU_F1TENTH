@@ -543,16 +543,19 @@ private:
             double orig_s = noise_buf[best_idx][t].steer;
             double pert_v = std::max(dynamic_min_speed, std::min(dynamic_max_speed, nominal_control[t].v + orig_v));
             double pert_s = std::max(-MAX_STEER_RAD, std::min(MAX_STEER_RAD, nominal_control[t].steer + orig_s));
-            double min_d = 999.0;
+            double max_penalty = 0.0;
             for (const auto& o : obs_snapshot) {
                 double dx = x_b - o.x;
-                if (std::abs(dx) > danger_radius) continue;
+                if (std::abs(dx) > o.r_danger) continue;
                 double dy = y_b - o.y;
-                if (std::abs(dy) > danger_radius) continue;
+                if (std::abs(dy) > o.r_danger) continue;
                 double d = std::hypot(dx, dy);
-                if (d < min_d) min_d = d;
+                if (d < o.r_danger) {
+                    double penalty = std::pow(o.r_danger - d, 2);
+                    if (penalty > max_penalty) max_penalty = penalty;
+                }
             }
-            if (min_d < danger_radius) best_obs_cost += std::pow(danger_radius - min_d, 2);
+            best_obs_cost += max_penalty;
             x_b += pert_v * std::cos(th_b) * dt; 
             y_b += pert_v * std::sin(th_b) * dt;
             th_b += pert_v * std::tan(pert_s) / WHEELBASE * dt;
