@@ -14,6 +14,7 @@
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/point_stamped.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
@@ -36,13 +37,13 @@ public:
         num_samples = this->get_parameter("num_samples").as_int();
         dt = this->get_parameter("dt").as_double();
         
-        lambda_ = 80.0; // [TUNE] Nhiệt độ Softmax: Càng lớn -> trung bình quỹ đạo càng đều. Càng nhỏ -> tham lam quỹ đạo tốt nhất
+        lambda_ = 120.0; // [TUNE] Nhiệt độ Softmax: Càng lớn -> trung bình quỹ đạo càng đều. Càng nhỏ -> tham lam quỹ đạo tốt nhất 80 100 kha oke
         
-        w_track = 10.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).
+        w_track = 10.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).  9
         w_progress = 5.0;  // [TUNE] Đi về phía trước.
-        w_heading = 40.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường.
+        w_heading = 35.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường. 30 oke
         w_obs = 100.0;     // [TUNE] Né vật cản.
-        w_smooth = 20.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục.
+        w_smooth = 10.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục. 20.5 15.5 chayj kha on ow 3 m/s  30.5 lag
         w_speed = 8.0;     // [TUNE] Phạt sai lệch tốc độ.
 
         // Pre-allocate buffers (Bug 4 - Performance)
@@ -61,10 +62,13 @@ public:
             "/ego_racecar/odom", 10, std::bind(&MPPIController::odom_callback, this, std::placeholders::_1));
         sub_laser = this->create_subscription<sensor_msgs::msg::LaserScan>(
             "/scan", 10, std::bind(&MPPIController::lidar_callback, this, std::placeholders::_1));
+        sub_clicked_point = this->create_subscription<geometry_msgs::msg::PointStamped>(
+            "/clicked_point", 10, std::bind(&MPPIController::clicked_point_callback, this, std::placeholders::_1));
 
         pub_drive = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>("/drive", 10);
         pub_best_traj = this->create_publisher<visualization_msgs::msg::Marker>("/mppi_best_trajectory", 10);
         pub_waypoints = this->create_publisher<visualization_msgs::msg::MarkerArray>("/publish_full_waypoint", 10);
+        pub_virtual_obs = this->create_publisher<visualization_msgs::msg::Marker>("/virtual_obstacles", 10);
 
         control_timer = this->create_wall_timer(
             std::chrono::milliseconds((int)(dt * 1000)), std::bind(&MPPIController::control_loop, this));
@@ -87,16 +91,16 @@ private:
     static constexpr double WHEELBASE = 0.33;
     static constexpr double MAX_STEER_RAD = 0.35;
     // --- Tunable Parameters ---
-    double target_speed_max = 2.0;      // Toc do toi da
-    double min_speed_curve = 1.0;       // Toc do thap nhat khi bo cua gat
+    double target_speed_max = 3.5;      // Toc do toi da
+    double min_speed_curve = 1.5;       // Toc do thap nhat khi bo cua gat
     double max_decel = 4.0;             // Gia toc phanh (m/s^2)
     double max_accel = 1.0;             // Gia toc tang toc (m/s^2)
-    double curve_thresh = 0.3;         // Nguong phat hien goc cua (curvature)
-    int speed_lookahead_wps = 40;       // Tam nhin xa de phanh som (so luong waypoints)
-    double danger_radius = 0.4;         // Khoang cach bao dong vat can
+    double curve_thresh = 0.3 ;         // Nguong phat hien goc cua (curvature) 0.6 0.3 kkha on 
+    int speed_lookahead_wps = 10;       // Tam nhin xa de phanh som (so luong waypoints)
+    double danger_radius = 0.3;         // Khoang cach bao dong vat can  5 ôn 
     double collision_cost = 100.0;     // Hinh phat khi cham tuong
     double stuck_timer_thresh = 1.0;    // Thoi gian xac nhan xe bi ket (giay)
-    double stop_timer_duration = 1.0;   // Thoi gian dung im khi gap vat can (giay)
+    double stop_timer_duration = 0.2;   // Thoi gian dung im khi gap vat can (giay)
     int horizon, num_samples;
     double dt, lambda_;
     double w_track, w_progress, w_heading, w_obs, w_smooth, w_speed;
@@ -125,11 +129,15 @@ private:
     
     std::string car_frame, map_frame;
     
+    std::vector<Point2D> virtual_obstacles;
+
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr sub_odom;
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_laser;
+    rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr sub_clicked_point;
     rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr pub_drive;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_best_traj;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_waypoints;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_virtual_obs;
     rclcpp::TimerBase::SharedPtr control_timer;
     
     std::unique_ptr<tf2_ros::Buffer> tf_buffer;
@@ -140,10 +148,47 @@ private:
     bool is_stuck_timer_active = false; // Bug 3 - Logic
     double stuck_start_time = 0.0;
     double stop_end_time = 0.0; // Bug 4 - Logic
+    double watchdog_cooldown_until = 0.0; // Cooldown sau escape, tranh bao dong ngay lap tuc
     
     double last_best_obs_cost = 0.0;
     double last_target_speed = 0.0;
     int last_nearest_wp_idx = 15; // Bug 5 - Performance
+
+    void clicked_point_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg) {
+        virtual_obstacles.push_back({msg->point.x, msg->point.y});
+        RCLCPP_INFO(this->get_logger(), "Added virtual obstacle at: %.2f, %.2f", msg->point.x, msg->point.y);
+        publish_virtual_obstacles_marker();
+    }
+
+    void publish_virtual_obstacles_marker() {
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = map_frame;
+        marker.header.stamp = this->now();
+        marker.ns = "virtual_obstacles";
+        marker.id = 1;
+        marker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+        
+        if (virtual_obstacles.empty()) {
+            marker.action = visualization_msgs::msg::Marker::DELETE;
+        } else {
+            marker.action = visualization_msgs::msg::Marker::ADD;
+            marker.scale.x = 0.6;
+            marker.scale.y = 0.6;
+            marker.scale.z = 0.6;
+            marker.color.r = 1.0;
+            marker.color.g = 0.0;
+            marker.color.b = 0.0;
+            marker.color.a = 0.8;
+            for (const auto& obs : virtual_obstacles) {
+                geometry_msgs::msg::Point p;
+                p.x = obs.x;
+                p.y = obs.y;
+                p.z = 0.0;
+                marker.points.push_back(p);
+            }
+        }
+        pub_virtual_obs->publish(marker);
+    }
 
     void publish_waypoints_marker() {
         if (waypoints.empty()) return;
@@ -245,7 +290,7 @@ private:
     }
 
     void control_loop() {
-        double final_w_sum = 0.0;
+
         double now_s = this->now().seconds();
         if (!odom_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
             publish_drive(0.0, 0.0);
@@ -280,6 +325,16 @@ private:
             obs_snapshot = map_obstacles;
             obs_stamp = obstacle_stamp;
         }
+
+        // --- INJECT VIRTUAL OBSTACLES (FROM RVIZ) ---
+        for (const auto& v_obs : virtual_obstacles) {
+            int num_points = 12;
+            for (int i = 0; i < num_points; i++) {
+                double angle = i * 2.0 * M_PI / num_points;
+                obs_snapshot.push_back({v_obs.x + 0.25 * std::cos(angle), v_obs.y + 0.25 * std::sin(angle)});
+            }
+        }
+        // -------------------------------------------
 
         // Local WP Search with Wrap-around
         int nearest_wp = last_nearest_wp_idx;
@@ -358,7 +413,7 @@ private:
                 
                 double dx_local = dx * std::cos(-theta0) - dy * std::sin(-theta0);
                 double dy_local = dx * std::sin(-theta0) + dy * std::cos(-theta0);
-                if (dx_local > 0.1 && dx_local < braking_dist && std::abs(dy_local) < 0.35) {
+                if (dx_local > 0.1 && dx_local < braking_dist && std::abs(dy_local) < 0.25) {
                     front_blocked = true;
                     sum_dy += dy_local;
                     count++;
@@ -366,18 +421,23 @@ private:
             }
         }
 
-        // Anti-stuck watchdog (Bug 3 - Logic)
+        // Anti-stuck watchdog
+        // Dieu kien: xe khong di duoc (v_cur thap), MPPI da co gang dat lenh chay (nominal_control[0].v lon),
+        // khong dang trong qua trinh escape, va da het thoi gian cooldown sau escape.
         bool is_stuck = false;
-        if (v_cur < 0.05 && std::abs(nominal_control[0].v) > 0.3) {
+        if (!is_stopped && now_s > watchdog_cooldown_until
+            && v_cur < 0.05 && std::abs(nominal_control[0].v) > 0.3) {
             if (!is_stuck_timer_active) {
                 RCLCPP_WARN(this->get_logger(), "Watchdog Timer Started: v_cur=%.2f < 0.05 while cmd_v=%.2f > 0.3", v_cur, nominal_control[0].v);
                 stuck_start_time = now_s;
                 is_stuck_timer_active = true;
             } else if (now_s - stuck_start_time > stuck_timer_thresh) {
                 is_stuck = true;
+                is_stuck_timer_active = false;
             }
-        } else {
-            is_stuck_timer_active = false;
+        } else if (!is_stopped) {
+            // Reset timer neu xe dang chay binh thuong
+            if (v_cur > 0.1) is_stuck_timer_active = false;
         }
 
         // Reverse logic (Bug 1 - Logic)
@@ -397,11 +457,12 @@ private:
             RCLCPP_INFO(this->get_logger(), "ESCAPE COMPLETED. Resuming normal operations.");
             is_stopped = false;
             is_stuck_timer_active = false;
+            watchdog_cooldown_until = now_s + 2.0; // 2s cooldown: cho xe tang toc truoc khi Watchdog hoat dong lai
             for (auto& c : nominal_control) { c.v = current_target_speed; c.steer = 0.0; } // Flush ONCE
         }
 
         double dynamic_min_speed = 0.0; // Xe KHONG bao gio duoc phep lui // Bug 2 - Logic
-        double dynamic_max_speed = is_stopped ? 0.5 : target_speed_max;
+        double dynamic_max_speed = is_stopped ? 0.5 : current_target_speed; // [Huong 2] Tran mem: MPPI chi duoc sample trong [0, tgt_v], khong conflict obs_cost
         if (is_stopped) current_target_speed = 0.5;
 
         double w_hdg_eff = w_heading; 
@@ -530,7 +591,7 @@ private:
             weights_buf[n] = w;
             w_sum += w;
         }
-        final_w_sum = w_sum;
+
 
         if (w_sum > 1e-10) {
             for (int t = 0; t < horizon; t++) {

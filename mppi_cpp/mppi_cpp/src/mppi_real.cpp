@@ -36,26 +36,14 @@ public:
         num_samples = this->get_parameter("num_samples").as_int();
         dt = this->get_parameter("dt").as_double();
         
-        lambda_ = 50.0;
+        lambda_ = 120.0; // [TUNE] Nhiệt độ Softmax: Càng lớn -> trung bình quỹ đạo càng đều. Càng nhỏ -> tham lam quỹ đạo tốt nhất 80 100 kha oke
         
-        w_track = 15.0;
-        w_progress = 5.0;
-        w_heading = 2.0; // [FIX] Giam manh de xe dam cut corner
-        w_obs = 500.0;
-        w_smooth = 1.5;
-        w_speed = 8.0;
-
-        // --- Tunable Parameters Init ---
-        target_speed_max = 5.0;
-        min_speed_curve = 1.4;
-        max_decel = 4.0;
-        max_accel = 2.0;
-        curve_thresh = 0.35;
-        speed_lookahead_wps = 50;
-        danger_radius = 1.2;
-        collision_cost = 1000.0;
-        stuck_timer_thresh = 0.8;
-        stop_timer_duration = 3.2;
+        w_track = 10.0;    // [TUNE] Bám tâm đường: Lớn -> xe cố bám chặt tâm nhưng dễ lạng lách (zig-zag).  9
+        w_progress = 5.0;  // [TUNE] Đi về phía trước.
+        w_heading = 35.0;  // [TUNE] Song song mép đường: Lớn -> xe mượt, ưu tiên đi thẳng. Nhỏ -> xe dễ chạy xéo qua đường. 30 oke
+        w_obs = 100.0;     // [TUNE] Né vật cản.
+        w_smooth = 10.5;    // [TUNE] Phạt bẻ lái gắt: Lớn -> ép vô lăng giữ yên, xe mượt. Nhỏ -> vô lăng giật cục. 20.5 15.5 chayj kha on ow 3 m/s  30.5 lag
+        w_speed = 8.0;     // [TUNE] Phạt sai lệch tốc độ.
 
         // Pre-allocate buffers (Bug 4 - Performance)
         noise_buf.resize(num_samples, std::vector<Control>(horizon));
@@ -99,16 +87,16 @@ private:
     static constexpr double WHEELBASE = 0.33;
     static constexpr double MAX_STEER_RAD = 0.418;
     // --- Tunable Parameters ---
-    double target_speed_max = 5.0;      // Toc do toi da
-    double min_speed_curve = 1.4;       // Toc do thap nhat khi bo cua gat
+    double target_speed_max = 3.5;      // Toc do toi da
+    double min_speed_curve = 1.5;       // Toc do thap nhat khi bo cua gat
     double max_decel = 4.0;             // Gia toc phanh (m/s^2)
-    double max_accel = 2.0;             // Gia toc tang toc (m/s^2)
-    double curve_thresh = 0.35;         // Nguong phat hien goc cua (curvature)
-    int speed_lookahead_wps = 50;       // Tam nhin xa de phanh som (so luong waypoints)
-    double danger_radius = 1.2;         // Khoang cach bao dong vat can
-    double collision_cost = 1000.0;     // Hinh phat khi cham tuong
+    double max_accel = 1.0;             // Gia toc tang toc (m/s^2)
+    double curve_thresh = 0.3 ;         // Nguong phat hien goc cua (curvature) 0.6 0.3 kkha on 
+    int speed_lookahead_wps = 10;       // Tam nhin xa de phanh som (so luong waypoints)
+    double danger_radius = 0.3;         // Khoang cach bao dong vat can  5 ôn 
+    double collision_cost = 100.0;     // Hinh phat khi cham tuong
     double stuck_timer_thresh = 1.0;    // Thoi gian xac nhan xe bi ket (giay)
-    double stop_timer_duration = 1.0;   // Thoi gian dung im khi gap vat can (giay)
+    double stop_timer_duration = 0.2;   // Thoi gian dung im khi gap vat can (giay)
     int horizon, num_samples;
     double dt, lambda_;
     double w_track, w_progress, w_heading, w_obs, w_smooth, w_speed;
@@ -152,6 +140,7 @@ private:
     bool is_stuck_timer_active = false; // Bug 3 - Logic
     double stuck_start_time = 0.0;
     double stop_end_time = 0.0; // Bug 4 - Logic
+    double watchdog_cooldown_until = 0.0; // Cooldown sau escape, tranh bao dong ngay lap tuc
     
     double last_best_obs_cost = 0.0;
     double last_target_speed = 0.0;
@@ -268,7 +257,7 @@ private:
     }
 
     void control_loop() {
-        double final_w_sum = 0.0;
+
         double now_s = this->now().seconds();
         // Odom timeout check (Bug 7)
         if (!odom_received || waypoints.empty() || (now_s - odom_stamp.seconds() > 0.5)) {
@@ -374,18 +363,22 @@ private:
             }
         }
 
-        // Anti-stuck watchdog (Bug 3 - Logic)
+        // Anti-stuck watchdog
+        // Dieu kien: xe khong di duoc (v_cur thap), MPPI da co gang dat lenh chay (nominal_control[0].v lon),
+        // khong dang trong qua trinh escape, va da het thoi gian cooldown sau escape.
         bool is_stuck = false;
-        if (v_cur < 0.05 && current_target_speed > 0.5) { // [FIX] Dung target thay vi v_cmd de tranh reset timer
+        if (!is_stopped && now_s > watchdog_cooldown_until
+            && v_cur < 0.05 && std::abs(nominal_control[0].v) > 0.3) {
             if (!is_stuck_timer_active) {
                 RCLCPP_WARN(this->get_logger(), "Watchdog Timer Started: v_cur=%.2f < 0.05 while cmd_v=%.2f > 0.3", v_cur, nominal_control[0].v);
                 stuck_start_time = now_s;
                 is_stuck_timer_active = true;
             } else if (now_s - stuck_start_time > stuck_timer_thresh) {
                 is_stuck = true;
+                is_stuck_timer_active = false;
             }
-        } else {
-            is_stuck_timer_active = false;
+        } else if (!is_stopped) {
+            if (v_cur > 0.1) is_stuck_timer_active = false;
         }
 
         // Reverse logic (Bug 1 - Logic)
@@ -405,11 +398,12 @@ private:
             RCLCPP_INFO(this->get_logger(), "ESCAPE COMPLETED. Resuming normal operations.");
             is_stopped = false;
             is_stuck_timer_active = false;
+            watchdog_cooldown_until = now_s + 2.0; // 2s cooldown: cho xe tang toc truoc khi Watchdog hoat dong lai
             for (auto& c : nominal_control) { c.v = current_target_speed; c.steer = 0.0; } // Flush ONCE
         }
 
         double dynamic_min_speed = 0.0; // Xe KHONG bao gio duoc phep lui // Bug 2 - Logic
-        double dynamic_max_speed = is_stopped ? 0.5 : target_speed_max; // Nho len (Creep) // [FIX] Max physical speed
+        double dynamic_max_speed = is_stopped ? 0.5 : current_target_speed; // [Huong 2] Tran mem: MPPI chi duoc sample trong [0, tgt_v], khong conflict obs_cost
         if (is_stopped) current_target_speed = 0.5;
 
         double w_hdg_eff = w_heading; 
@@ -538,7 +532,7 @@ private:
             weights_buf[n] = w;
             w_sum += w;
         }
-        final_w_sum = w_sum;
+
 
         if (w_sum > 1e-10) {
             std::vector<double> num_v_buf(horizon, 0.0);
