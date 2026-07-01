@@ -316,11 +316,12 @@ private:
             return;
         }
 
-        // --- INTELLIGENT WALL FILTER ---
+        // --- INTELLIGENT WALL FILTER & OBSTACLE DISTANCE ---
         struct ObstaclePoint { double x, y, r_danger; };
         std::vector<ObstaclePoint> obs_snapshot;
         obs_snapshot.reserve(raw_obs_snapshot.size());
         int wall_cnt = 0, obs_cnt = 0;
+        double min_obs_dist_front = 999.0;
         
         for (const auto& pt : raw_obs_snapshot) {
             double min_d_to_track = 999.0;
@@ -335,11 +336,21 @@ private:
             } else {
                 obs_cnt++; // Vat can tren duong
                 r = 1.0;   // Tang ban kinh ne vat can tren duong len 1.0m
+                
+                // Kiem tra vat can co nam truoc mat xe khong
+                double dx = pt.x - x0;
+                double dy = pt.y - y0;
+                double dx_local = dx * std::cos(-theta0) - dy * std::sin(-theta0);
+                double dy_local = dx * std::sin(-theta0) + dy * std::cos(-theta0);
+                
+                if (dx_local > 0.1 && dx_local < 4.0 && std::abs(dy_local) < 0.6) {
+                    if (dx_local < min_obs_dist_front) min_obs_dist_front = dx_local;
+                }
             }
             obs_snapshot.push_back({pt.x, pt.y, r});
         }
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, 
-            "Wall Filter: %d walls (r=0.35m), %d obstacles (r=1.0m)", wall_cnt, obs_cnt);
+            "Wall Filter: %d walls, %d obs | min_front_dist: %.2fm", wall_cnt, obs_cnt, min_obs_dist_front);
         // -------------------------------
 
         // Curvature Profiling
@@ -356,13 +367,19 @@ private:
         double speed_factor = max_c > curve_thresh ? std::max(0.0, 1.0 - (max_c - curve_thresh) / curve_thresh) : 1.0;
         double current_target_speed = min_speed_curve + (target_speed - min_speed_curve) * speed_factor;
 
-        // Rate limit deceleration (Bug 6 - Logic)
-        if (last_best_obs_cost > 0.0) {
-            double obs_speed_factor = std::max(0.3, 1.0 - last_best_obs_cost / 200.0);
-            double obs_target = target_speed_max * obs_speed_factor;
-            current_target_speed = std::min(current_target_speed, obs_target);
+        // Proactive Deceleration (Fix Bug "Ngu Ngu")
+        double obs_speed_factor = 1.0;
+        if (min_obs_dist_front < 3.5) {
+            obs_speed_factor = 0.3 + 0.7 * ((min_obs_dist_front - 0.5) / 3.0);
+            obs_speed_factor = std::max(0.3, std::min(1.0, obs_speed_factor));
+        }
+
+        double obs_target = target_speed_max * obs_speed_factor;
+        current_target_speed = std::min(current_target_speed, obs_target);
+
+        if (obs_speed_factor < 0.99) {
             RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200, 
-                "Obstacle Decel: obs_cost=%.1f -> obs_factor=%.2f, new tgt_v=%.2f", last_best_obs_cost, obs_speed_factor, current_target_speed);
+                "Proactive Decel: front_dist=%.2f -> factor=%.2f, tgt_v=%.2f", min_obs_dist_front, obs_speed_factor, current_target_speed);
         }
         
         current_target_speed = std::min(last_target_speed + max_accel * dt, current_target_speed);
