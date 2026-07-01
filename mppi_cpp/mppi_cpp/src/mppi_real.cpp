@@ -296,7 +296,7 @@ private:
         }
         last_nearest_wp_idx = nearest_wp;
 
-        int wp_window = 50;
+        int wp_window = 80; // Tăng nhẹ cho OMP loop để không bị hụt tầm nhìn
         local_wps.clear();
         local_hdgs.clear();
         local_idxs.clear();
@@ -317,6 +317,16 @@ private:
         }
 
         // --- INTELLIGENT WALL FILTER & OBSTACLE DISTANCE ---
+        // Sinh ra mot tap waypoint rieng biet dai hon nhieu (200 wps) chi dung cho Wall Filter
+        // de tranh viec vat can o xa (>3m) bi nhan dien nham la tuong vi local_wps qua ngan!
+        std::vector<Point2D> filter_wps;
+        filter_wps.reserve(200);
+        for (int i = -15; i < 185; i++) {
+            int idx = (nearest_wp + i) % (int)waypoints.size();
+            if (idx < 0) idx += waypoints.size();
+            filter_wps.push_back(waypoints[idx]);
+        }
+
         struct ObstaclePoint { double x, y, r_danger; };
         std::vector<ObstaclePoint> obs_snapshot;
         obs_snapshot.reserve(raw_obs_snapshot.size());
@@ -325,7 +335,7 @@ private:
         
         for (const auto& pt : raw_obs_snapshot) {
             double min_d_to_track = 999.0;
-            for (const auto& wp : local_wps) {
+            for (const auto& wp : filter_wps) {
                 double d = std::hypot(pt.x - wp.x, pt.y - wp.y);
                 if (d < min_d_to_track) min_d_to_track = d;
             }
@@ -337,13 +347,14 @@ private:
                 obs_cnt++; // Vat can tren duong
                 r = 1.0;   // Tang ban kinh ne vat can tren duong len 1.0m
                 
-                // Kiem tra vat can co nam truoc mat xe khong
+                // Kiem tra vat can co nam truoc mat xe khong (mo rong tam nhin giam toc)
                 double dx = pt.x - x0;
                 double dy = pt.y - y0;
                 double dx_local = dx * std::cos(-theta0) - dy * std::sin(-theta0);
                 double dy_local = dx * std::sin(-theta0) + dy * std::cos(-theta0);
                 
-                if (dx_local > 0.1 && dx_local < 4.0 && std::abs(dy_local) < 0.6) {
+                // Mở rộng hành lang quét vật cản lên 0.75m để đảm bảo không lọt vật cản ở mép xe
+                if (dx_local > 0.1 && dx_local < 5.0 && std::abs(dy_local) < 0.75) {
                     if (dx_local < min_obs_dist_front) min_obs_dist_front = dx_local;
                 }
             }
@@ -369,9 +380,10 @@ private:
 
         // Proactive Deceleration (Fix Bug "Ngu Ngu")
         double obs_speed_factor = 1.0;
-        if (min_obs_dist_front < 3.5) {
-            obs_speed_factor = 0.3 + 0.7 * ((min_obs_dist_front - 0.5) / 3.0);
-            obs_speed_factor = std::max(0.3, std::min(1.0, obs_speed_factor));
+        if (min_obs_dist_front < 4.0) {
+            // Tăng vùng đệm giảm tốc lên 4.0m
+            obs_speed_factor = 0.25 + 0.75 * ((min_obs_dist_front - 0.5) / 3.5);
+            obs_speed_factor = std::max(0.25, std::min(1.0, obs_speed_factor));
         }
 
         double obs_target = target_speed_max * obs_speed_factor;
