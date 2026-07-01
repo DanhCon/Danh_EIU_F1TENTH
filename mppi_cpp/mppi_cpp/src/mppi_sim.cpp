@@ -152,6 +152,7 @@ private:
     
     double last_best_obs_cost = 0.0;
     double last_target_speed = 0.0;
+    double last_ema_v = 0.0; // Filter for smooth acceleration
     int last_nearest_wp_idx = 15; // Bug 5 - Performance
 
     void clicked_point_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg) {
@@ -503,6 +504,7 @@ private:
             RCLCPP_WARN(this->get_logger(), "EMERGENCY STOP TRIGGERED! front_blocked:%d, is_stuck:%d. Escaping...", front_blocked, is_stuck);
             is_stopped = true;
             stop_end_time = now_s + stop_timer_duration;
+            last_ema_v = 0.5; // Reset EMA filter for immediate response
             double escape_steer;
             if (count > 0) {
                 escape_steer = (sum_dy > 0) ? -MAX_STEER_RAD : MAX_STEER_RAD; // Ne vat can
@@ -680,7 +682,11 @@ private:
             }
         }
 
-        publish_drive(nominal_control[0].v, nominal_control[0].steer);
+        // EMA Filter cho toc do xe, giup xe khong bi "rack rack" do nhay so lien tuc cua MPPI
+        double alpha_v = 0.15; // He so muot (cang nho cang muot)
+        last_ema_v = alpha_v * nominal_control[0].v + (1.0 - alpha_v) * last_ema_v;
+
+        publish_drive(last_ema_v, nominal_control[0].steer);
         publish_best_trajectory();
 
         for (int t = 0; t < horizon - 1; t++) {
