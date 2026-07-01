@@ -90,13 +90,13 @@ private:
     double target_speed_max = 3.5;      // Toc do toi da
     double min_speed_curve = 1.5;       // Toc do thap nhat khi bo cua gat
     double max_decel = 4.0;             // Gia toc phanh (m/s^2)
-    double max_accel = 1.0;             // Gia toc tang toc (m/s^2)
+    double max_accel = 2.5;             // Gia toc tang toc (m/s^2)
     double curve_thresh = 0.3 ;         // Nguong phat hien goc cua (curvature) 0.6 0.3 kkha on 
-    int speed_lookahead_wps = 10;       // Tam nhin xa de phanh som (so luong waypoints)
-    double danger_radius = 0.3;         // Khoang cach bao dong vat can  5 ôn 
+    int speed_lookahead_wps = 25;       // Tam nhin xa de phanh som (so luong waypoints)
+    double danger_radius = 0.35;         // Khoang cach bao dong vat can  5 ôn 
     double collision_cost = 100.0;     // Hinh phat khi cham tuong
     double stuck_timer_thresh = 1.0;    // Thoi gian xac nhan xe bi ket (giay)
-    double stop_timer_duration = 0.2;   // Thoi gian dung im khi gap vat can (giay)
+    double stop_timer_duration = 1.0;   // Thoi gian dung im khi gap vat can (giay)
     int horizon, num_samples;
     double dt, lambda_;
     double w_track, w_progress, w_heading, w_obs, w_smooth, w_speed;
@@ -270,11 +270,11 @@ private:
             return;
         }
         // Snapshot obstacles (Bug 3 - Perf)
-        std::vector<Point2D> obs_snapshot;
+        std::vector<Point2D> raw_obs_snapshot;
         rclcpp::Time obs_stamp;
         {
             std::lock_guard<std::mutex> lock(obs_mutex);
-            std::swap(obs_snapshot, map_obstacles); // [FIX] O(1) Swap
+            raw_obs_snapshot = map_obstacles;
             obs_stamp = obstacle_stamp;
         }
 
@@ -316,6 +316,32 @@ private:
             return;
         }
 
+        // --- INTELLIGENT WALL FILTER ---
+        struct ObstaclePoint { double x, y, r_danger; };
+        std::vector<ObstaclePoint> obs_snapshot;
+        obs_snapshot.reserve(raw_obs_snapshot.size());
+        int wall_cnt = 0, obs_cnt = 0;
+        
+        for (const auto& pt : raw_obs_snapshot) {
+            double min_d_to_track = 999.0;
+            for (const auto& wp : local_wps) {
+                double d = std::hypot(pt.x - wp.x, pt.y - wp.y);
+                if (d < min_d_to_track) min_d_to_track = d;
+            }
+            double r = 0.35;
+            if (min_d_to_track > 0.8) {
+                wall_cnt++; // Tuong
+                r = 0.35;
+            } else {
+                obs_cnt++; // Vat can tren duong
+                r = 1.0;   // Tang ban kinh ne vat can tren duong len 1.0m
+            }
+            obs_snapshot.push_back({pt.x, pt.y, r});
+        }
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 500, 
+            "Wall Filter: %d walls (r=0.35m), %d obstacles (r=1.0m)", wall_cnt, obs_cnt);
+        // -------------------------------
+
         // Curvature Profiling
         double max_c = 0.0;
         for (int i = 0; i < speed_lookahead_wps; i++) { // [FIX] Tang tam nhin de phanh som (giai quyet loop spiral)
@@ -333,7 +359,10 @@ private:
         // Rate limit deceleration (Bug 6 - Logic)
         if (last_best_obs_cost > 0.0) {
             double obs_speed_factor = std::max(0.3, 1.0 - last_best_obs_cost / 200.0);
-            current_target_speed = std::max(0.0, current_target_speed * obs_speed_factor); // Khong lui 
+            double obs_target = target_speed_max * obs_speed_factor;
+            current_target_speed = std::min(current_target_speed, obs_target);
+            RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 200, 
+                "Obstacle Decel: obs_cost=%.1f -> obs_factor=%.2f, new tgt_v=%.2f", last_best_obs_cost, obs_speed_factor, current_target_speed);
         }
         
         current_target_speed = std::min(last_target_speed + max_accel * dt, current_target_speed);
@@ -462,17 +491,22 @@ private:
                 prev_pert_v = pert_v;
                 prev_pert_s = pert_s;
 
-                double min_d = 999.0;
+                double max_penalty = 0.0;
+                double min_d_absolute = 999.0;
                 for (const auto& o : obs_snapshot) {
                     double dx = x - o.x;
-                    if (std::abs(dx) > danger_radius) continue; // Bug 1 - Perf
+                    if (std::abs(dx) > o.r_danger) continue; 
                     double dy = y - o.y;
-                    if (std::abs(dy) > danger_radius) continue; // Bug 1 - Perf
+                    if (std::abs(dy) > o.r_danger) continue; 
                     double d = std::hypot(dx, dy);
-                    if (d < min_d) min_d = d;
+                    if (d < min_d_absolute) min_d_absolute = d;
+                    if (d < o.r_danger) {
+                        double penalty = std::pow(o.r_danger - d, 2);
+                        if (penalty > max_penalty) max_penalty = penalty;
+                    }
                 }
-                if (min_d < danger_radius) obs_cost += std::pow(danger_radius - min_d, 2);
-                if (min_d < 0.2) obs_cost += collision_cost;
+                obs_cost += max_penalty;
+                if (min_d_absolute < 0.2) obs_cost += collision_cost;
 
                 if (t == horizon - 1) {
                     double w_hdg_eff = is_stopped ? 5.0 : w_heading;
