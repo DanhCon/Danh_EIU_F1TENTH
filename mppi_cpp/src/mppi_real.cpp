@@ -132,10 +132,10 @@ private:
 
     // -- MPPI Cost Weights --
     double lambda_    = 120.0;  // Softmax temperature: cao→đều, thấp→tham lam trajectory tốt nhất
-    double w_track    = 10.0;   // Bám tâm đường (cross-track error²)
-    double w_heading  = 35.0;   // Song song đường đua (heading error²)
+    double w_track    = 6.0;    // Bám tâm đường (Đã giảm từ 10 xuống 6 để xe dám lấn làn né vật)
+    double w_heading  = 15.0;   // Song song đường đua (Đã giảm từ 35 xuống 15 để xe dám bẻ chéo đầu lách)
     double w_progress =  5.0;   // Khuyến khích tiến về phía trước
-    double w_obs      = 100.0;  // Né chướng ngại vật (penalty trong vùng nguy hiểm)
+    double w_obs      = 150.0;  // Né chướng ngại vật (Tăng nhẹ để ưu tiên tính mạng)
     double w_smooth   = 10.5;   // Phạt bẻ lái/thay đổi tốc độ đột ngột (giảm rack-rack)
     double w_speed    =  8.0;   // Bám tốc độ mục tiêu
 
@@ -160,9 +160,9 @@ private:
     //
     double corridor_half_w = 0.85;  // Nửa chiều rộng hành lang (m) - Đã tăng lên 0.85 để dễ lách
     double corridor_max_d  = 6.0;   // Chiều dài hành lang nhìn trước (m)
-    double r_obstacle      = 0.55;  // Bán kính nguy hiểm (m) - Đã giảm từ 0.8 xuống 0.55 để xe dám lách
-    double r_wall          = 0.3;   // Bán kính nguy hiểm của tường 2 bên (m)
-    double collision_cost  = 100.0; // Chi phí cộng thêm khi quỹ đạo cách vật cản < 0.2m
+    double r_obstacle      = 0.30;  // Bán kính nguy hiểm (m) - GIẢM XUỐNG 0.30 (bằng đúng bề ngang xe). Nếu to quá xe sẽ sợ không dám lách.
+    double r_wall          = 0.25;  // Bán kính nguy hiểm của tường 2 bên (m)
+    double collision_cost  = 200.0; // Phạt cực nặng nếu quẹt trúng vật cản
 
     // -- Proactive Deceleration (giảm tốc sớm khi có vật cản) --
     double obs_decel_start_dist = 4.0;   // Bắt đầu giảm tốc khi vật cản cách (m)
