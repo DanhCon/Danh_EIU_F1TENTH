@@ -158,9 +158,9 @@ private:
     //   Ưu điểm so với Wall Filter cũ: không cần x0/y0 chính xác
     //   từ Particle Filter, chỉ cần heading theta0.
     //
-    double corridor_half_w = 0.6;   // Nửa chiều rộng hành lang (m). Xe ~0.3m + margin 0.3m
+    double corridor_half_w = 0.85;  // Nửa chiều rộng hành lang (m) - Đã tăng lên 0.85 để dễ lách
     double corridor_max_d  = 6.0;   // Chiều dài hành lang nhìn trước (m)
-    double r_obstacle      = 0.8;   // Bán kính nguy hiểm của vật cản trong hành lang (m)
+    double r_obstacle      = 0.55;  // Bán kính nguy hiểm (m) - Đã giảm từ 0.8 xuống 0.55 để xe dám lách
     double r_wall          = 0.3;   // Bán kính nguy hiểm của tường 2 bên (m)
     double collision_cost  = 100.0; // Chi phí cộng thêm khi quỹ đạo cách vật cản < 0.2m
 
@@ -171,7 +171,7 @@ private:
     // -- Emergency Stop & Recovery --
     double stuck_timer_thresh         = 1.0;  // Thời gian xác nhận bị kẹt (s)
     double stop_timer_duration        = 1.0;  // Thời gian thực hiện escape (s)
-    double escape_speed               = 0.3;  // Tốc độ khi escape (m/s) — thấp để an toàn
+    double escape_speed               = 0.0;  // Tốc độ khi escape (m/s) - Đã đổi thành 0.0 (phanh đứng hình)
     double watchdog_cooldown_duration = 2.0;  // Cooldown watchdog sau escape (s)
     double front_blocked_cooldown_dur = 1.5;  // Cooldown front_blocked sau escape (s)
 
@@ -181,7 +181,7 @@ private:
 
     // -- MPPI Exploration Noise --
     double sigma_v = 1.5;   // Độ lệch chuẩn nhiễu tốc độ MPPI
-    double sigma_s = 0.15;  // Độ lệch chuẩn nhiễu góc lái MPPI (nhỏ → ít rack-rack)
+    double sigma_s = 0.30;  // Độ lệch chuẩn góc lái - Đã tăng lên 0.30 để xe có thể bẻ gắt né vật cản
 
     // -- MPPI Horizon (set từ ROS param) --
     int    horizon, num_samples;
