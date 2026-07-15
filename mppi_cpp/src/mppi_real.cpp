@@ -72,9 +72,9 @@ public:
         costs_buf.resize(num_samples, 0.0);
         weights_buf.resize(num_samples, 0.0);
         nominal_control.resize(horizon, {0.0, 0.0});
-        local_wps.reserve(100);
-        local_hdgs.reserve(100);
-        local_idxs.reserve(100);
+        local_wps.reserve(WP_WINDOW);
+        local_hdgs.reserve(WP_WINDOW);
+        local_idxs.reserve(WP_WINDOW);
 
         // TF
         tf_buffer   = std::make_unique<tf2_ros::Buffer>(get_clock());
@@ -121,6 +121,34 @@ private:
     // Thông số cơ học xe
     static constexpr double WHEELBASE     = 0.33;   // Chiều dài cơ sở (m)
     static constexpr double MAX_STEER_RAD = 0.418;  // Góc lái vật lý tối đa (rad)
+
+    // Hằng số dọn dẹp Magic Numbers
+    static constexpr int    WP_WINDOW                     = 80;    // Cửa sổ waypoint cục bộ
+    static constexpr int    WP_WINDOW_BACK                = 15;    // Số lượng waypoint lùi lại phía sau xe
+    static constexpr int    WP_SEARCH_BACK                = 20;    // Cửa sổ tìm kiếm waypoint lùi phía sau
+    static constexpr int    WP_SEARCH_FORWARD             = 40;    // Cửa sổ tìm kiếm waypoint tiến phía trước
+    static constexpr double TELEPORT_THRESHOLD_M          = 5.0;   // Ngưỡng phát hiện teleport (m)
+    static constexpr double MIN_LIDAR_RANGE               = 0.1;   // Khoảng quét tối thiểu của LiDAR (m)
+    static constexpr double MAX_LIDAR_RANGE               = 3.5;   // Khoảng quét tối đa của LiDAR (m)
+    static constexpr double ODOM_TIMEOUT_S                = 0.5;   // Thời gian tối đa mất tín hiệu Odom (s)
+    static constexpr double LIDAR_TIMEOUT_S               = 0.5;   // Thời gian tối đa mất tín hiệu LiDAR (s)
+    static constexpr double DOWN_SAMPLE_ANGLE_DEG         = 1.0;   // Góc down-sample tia LiDAR (độ)
+    static constexpr double CORRIDOR_MIN_DIST             = 0.1;   // Bỏ qua LiDAR quá gần xe (m)
+    static constexpr double PROACTIVE_DECEL_MIN_DIST      = 0.5;   // Khoảng cách tối thiểu của giảm tốc chủ động (m)
+    static constexpr double MIN_BRAKING_DIST              = 0.8;   // Khoảng cách phanh tối thiểu (m)
+    static constexpr double BRAKING_MARGIN                = 0.3;   // Khoảng cách an toàn bổ sung khi phanh (m)
+    static constexpr double AABB_PADDING                  = 0.5;   // Padding cho bộ lọc nhanh AABB (m)
+    static constexpr double EMERGENCY_MIN_DIST            = 0.1;   // Khoảng cách tối thiểu vùng phanh khẩn cấp (m)
+    static constexpr double EMERGENCY_HALF_WIDTH          = 0.35;  // Nửa chiều rộng vùng phanh khẩn cấp (m)
+    static constexpr int    MIN_BLOCKED_COUNT             = 3;     // Số tia LiDAR tối thiểu để xác nhận vật cản
+    static constexpr double STUCK_VELOCITY_THRESHOLD      = 0.05;  // Ngưỡng tốc độ xác định bị kẹt (m/s)
+    static constexpr double STUCK_CMD_THRESHOLD           = 0.3;   // Ngưỡng tốc độ lệnh xác định bị kẹt (m/s)
+    static constexpr double MOVING_VELOCITY_THRESHOLD     = 0.1;   // Ngưỡng tốc độ xác nhận xe đã di chuyển (m/s)
+    static constexpr double COLLISION_DISTANCE_M          = 0.2;   // Khoảng cách va chạm cực cận (m)
+    static constexpr double W_HEADING_STOPPED             = 5.0;   // Trọng số hướng khi dừng xe
+    static constexpr double TERMINAL_COST_MULTIPLIER      = 3.0;   // Hệ số nhân cho chi phí terminal
+    static constexpr double STEER_DECAY_FACTOR            = 0.5;   // Hệ số suy giảm góc lái ở bước cuối
+    static constexpr double VISUALIZATION_HEIGHT_Z        = 0.05;  // Chiều cao z để vẽ line trên RViz (m)
 
     // Tên frame ROS
     const std::string car_frame = "base_link";
@@ -338,14 +366,14 @@ private:
         double tx  = tf.transform.translation.x;
         double ty  = tf.transform.translation.y;
 
-        // Down-sample theo góc 1° để giảm khối lượng tính toán
-        int step = std::max(1, static_cast<int>(M_PI / 180.0 / msg->angle_increment));
+        // Down-sample theo góc DOWN_SAMPLE_ANGLE_DEG để giảm khối lượng tính toán
+        int step = std::max(1, static_cast<int>((DOWN_SAMPLE_ANGLE_DEG * M_PI / 180.0) / msg->angle_increment));
 
         std::vector<Point2D> temp;
         temp.reserve(msg->ranges.size() / step + 1);
         for (size_t i = 0; i < msg->ranges.size(); i += step) {
             double r = msg->ranges[i];
-            if (!std::isnormal(r) || r < 0.1 || r > 3.5) continue;
+            if (!std::isnormal(r) || r < MIN_LIDAR_RANGE || r > MAX_LIDAR_RANGE) continue;
             double angle = msg->angle_min + i * msg->angle_increment;
             double px = r * std::cos(angle);
             double py = r * std::sin(angle);
@@ -366,6 +394,7 @@ private:
     // ============================================================
 
     void control_loop() {
+        auto start_time = std::chrono::high_resolution_clock::now();
         double now_s = now().seconds();
 
         // --- 4.1 Snapshot thread-safe ---
@@ -389,7 +418,7 @@ private:
         }
 
         // --- 4.2 Kiểm tra tính hợp lệ của dữ liệu đầu vào ---
-        if (!got_odom || waypoints.empty() || (now_s - o_stamp.seconds() > 0.5)) {
+        if (!got_odom || waypoints.empty() || (now_s - o_stamp.seconds() > ODOM_TIMEOUT_S)) {
             publish_drive(0.0, 0.0); // Dừng an toàn nếu mất tín hiệu
             return;
         }
@@ -404,12 +433,12 @@ private:
         int nearest_wp = last_nearest_wp;
         {
             double min_d = 9999.0;
-            for (int di = -20; di <= 40; di++) {
+            for (int di = -WP_SEARCH_BACK; di <= WP_SEARCH_FORWARD; di++) {
                 int idx = (nearest_wp + di + (int)waypoints.size()) % (int)waypoints.size();
                 double d = std::hypot(waypoints[idx].x - x, waypoints[idx].y - y);
                 if (d < min_d) { min_d = d; nearest_wp = idx; }
             }
-            if (min_d > 5.0) { // Teleport recovery
+            if (min_d > TELEPORT_THRESHOLD_M) { // Teleport recovery
                 for (int i = 0; i < (int)waypoints.size(); i++) {
                     double d = std::hypot(waypoints[i].x - x, waypoints[i].y - y);
                     if (d < min_d) { min_d = d; nearest_wp = i; }
@@ -419,10 +448,9 @@ private:
         }
 
         // --- 4.4 Xây dựng cửa sổ waypoint cục bộ ---
-        // Lấy 80 waypoint xung quanh nearest_wp (-15 đến +65) để MPPI tìm kiếm.
-        const int WP_WINDOW = 80;
+        // Lấy các waypoint xung quanh nearest_wp để MPPI tìm kiếm.
         local_wps.clear(); local_hdgs.clear(); local_idxs.clear();
-        for (int i = -15; i < WP_WINDOW - 15; i++) {
+        for (int i = -WP_WINDOW_BACK; i < WP_WINDOW - WP_WINDOW_BACK; i++) {
             int idx = ((nearest_wp + i) % (int)waypoints.size() + (int)waypoints.size()) % (int)waypoints.size();
             local_wps.push_back(waypoints[idx]);
             local_hdgs.push_back(waypoint_headings[idx]);
@@ -458,7 +486,7 @@ private:
             double dy_l = dx * std::sin(-th) + dy * std::cos(-th); // trục Y xe (bên trái)
 
             double r;
-            if (dx_l > 0.1 && dx_l < corridor_max_d && std::abs(dy_l) < corridor_half_w) {
+            if (dx_l > CORRIDOR_MIN_DIST && dx_l < corridor_max_d && std::abs(dy_l) < corridor_half_w) {
                 r = r_obstacle;
                 obs_cnt++;
                 if (dx_l < min_front_dist) min_front_dist = dx_l;
@@ -488,7 +516,7 @@ private:
         // --- 4.7 Proactive Deceleration: giảm tốc sớm khi vật cản tiến gần ---
         if (min_front_dist < obs_decel_start_dist) {
             double f = obs_decel_min_factor
-                + (1.0 - obs_decel_min_factor) * ((min_front_dist - 0.5) / (obs_decel_start_dist - 0.5));
+                + (1.0 - obs_decel_min_factor) * ((min_front_dist - PROACTIVE_DECEL_MIN_DIST) / (obs_decel_start_dist - PROACTIVE_DECEL_MIN_DIST));
             f = std::max(obs_decel_min_factor, std::min(1.0, f));
             target_v = std::min(target_v, target_speed_max * f);
             RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 200,
@@ -507,39 +535,39 @@ private:
         int    blk_cnt       = 0;
 
         double obs_age = now_s - obs_stamp.seconds();
-        bool obs_fresh = (obs_stamp.nanoseconds() != 0 && obs_age < 0.5);
+        bool obs_fresh = (obs_stamp.nanoseconds() != 0 && obs_age < LIDAR_TIMEOUT_S);
         
         // Log lỗi 1: Cảnh báo nếu LiDAR bị trễ (vô hiệu hóa phanh khẩn cấp)
         if (obs_stamp.nanoseconds() != 0 && !obs_fresh) {
             RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, 
-                "[CẢNH BÁO] LiDAR bị trễ %.2fs (>0.5s). Phanh khẩn cấp đang bị TẮT để tránh lỗi!", obs_age);
+                "[CẢNH BÁO] LiDAR bị trễ %.2fs (>%.1fs). Phanh khẩn cấp đang bị TẮT để tránh lỗi!", obs_age, LIDAR_TIMEOUT_S);
         }
 
         if (obs_fresh && now_s > front_blocked_cooldown_until) {
             // Khoảng cách phanh = v²/(2a) + margin
-            double braking_d = std::max(0.8, vc * vc / (2.0 * max_decel) + 0.3);
-            double pre_bound = braking_d + 0.5; // Pre-filter nhanh (AABB)
+            double braking_d = std::max(MIN_BRAKING_DIST, vc * vc / (2.0 * max_decel) + BRAKING_MARGIN);
+            double pre_bound = braking_d + AABB_PADDING; // Pre-filter nhanh (AABB)
 
             for (const auto& o : obs_pts) {
                 double dx = o.x - x, dy = o.y - y;
                 if (std::abs(dx) > pre_bound || std::abs(dy) > pre_bound) continue;
                 double dx_l = dx * std::cos(-th) - dy * std::sin(-th);
                 double dy_l = dx * std::sin(-th) + dy * std::cos(-th);
-                if (dx_l > 0.1 && dx_l < braking_d && std::abs(dy_l) < 0.35) {
+                if (dx_l > EMERGENCY_MIN_DIST && dx_l < braking_d && std::abs(dy_l) < EMERGENCY_HALF_WIDTH) {
                     sum_dy += dy_l;
                     blk_cnt++;
                     // Log điểm rơi vào vùng tử thần (để check lỗi TF Ghosting hoặc nhiễu)
                     RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500, 
-                        "[DEBUG LiDAR] Tia chạm vùng nguy hiểm: dx_l=%.2f (cần <%.2f), dy_l=%.2f (cần <0.35)", dx_l, braking_d, dy_l);
+                        "[DEBUG LiDAR] Tia chạm vùng nguy hiểm: dx_l=%.2f (cần <%.2f), dy_l=%.2f (cần <%.2f)", dx_l, braking_d, dy_l, EMERGENCY_HALF_WIDTH);
                 }
             }
             
             // Sửa lỗi 2: Chống nhiễu LiDAR (Bóng ma) - Yêu cầu ít nhất 3 điểm
-            if (blk_cnt >= 3) {
+            if (blk_cnt >= MIN_BLOCKED_COUNT) {
                 front_blocked = true;
                 RCLCPP_WARN(get_logger(), "[PHANH KHẨN CẤP] Phát hiện vật cản thật! Số tia chạm: %d, Tổng lệch ngang(sum_dy): %.2f", blk_cnt, sum_dy);
             } else if (blk_cnt > 0) {
-                RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500, "[BỎ QUA] Có %d tia chạm vật cản, nhưng < 3 tia (Nhiễu/Bóng ma).", blk_cnt);
+                RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500, "[BỎ QUA] Có %d tia chạm vật cản, nhưng < %d tia (Nhiễu/Bóng ma).", blk_cnt, MIN_BLOCKED_COUNT);
             }
         }
 
@@ -548,7 +576,7 @@ private:
         // Chờ stuck_timer_thresh giây trước khi trigger để tránh false positive.
         bool is_stuck = false;
         if (!is_stopped && now_s > watchdog_cooldown_until
-            && vc < 0.05 && std::abs(nominal_control[0].v) > 0.3)
+            && vc < STUCK_VELOCITY_THRESHOLD && std::abs(nominal_control[0].v) > STUCK_CMD_THRESHOLD)
         {
             if (!is_stuck_timer_active) {
                 RCLCPP_WARN(get_logger(),
@@ -560,7 +588,7 @@ private:
                 is_stuck_timer_active = false;
                 RCLCPP_WARN(get_logger(), "[WATCHDOG KÍCH HOẠT] Đã quá %.1fs. Xác nhận xe bị kẹt!", stuck_timer_thresh);
             }
-        } else if (!is_stopped && vc > 0.1) {
+        } else if (!is_stopped && vc > MOVING_VELOCITY_THRESHOLD) {
             if (is_stuck_timer_active) {
                 RCLCPP_INFO(get_logger(), "[WATCHDOG HỦY] Xe đã trôi lại (v_cur=%.2f).", vc);
             }
@@ -664,12 +692,12 @@ private:
                     if (d < o.r) { double p = (o.r - d) * (o.r - d); if (p > max_pen) max_pen = p; }
                 }
                 obs += max_pen;
-                if (min_abs_d < 0.2) obs += collision_cost; // Va chạm trực tiếp
+                if (min_abs_d < COLLISION_DISTANCE_M) obs += collision_cost; // Va chạm trực tiếp
 
                 // Chi phí terminal (bước cuối): bám vị trí + tiến về phía trước
                 if (t == horizon - 1) {
-                    double wh = is_stopped ? 5.0 : w_heading;
-                    terminal += 3.0 * w_track * min_d2 + 3.0 * wh * herr * herr;
+                    double wh = is_stopped ? W_HEADING_STOPPED : w_heading;
+                    terminal += TERMINAL_COST_MULTIPLIER * w_track * min_d2 + TERMINAL_COST_MULTIPLIER * wh * herr * herr;
                     int prog = (g_idx - local_idxs[local_nearest] + (int)waypoints.size())
                                % (int)waypoints.size();
                     double prog_v = (prog > (int)waypoints.size() / 2)
@@ -733,7 +761,11 @@ private:
         // --- 4.15 Shift horizon: chuẩn bị cho vòng lặp tiếp theo ---
         for (int t = 0; t < horizon - 1; t++) nominal_control[t] = nominal_control[t + 1];
         nominal_control[horizon - 1].v     = target_v;
-        nominal_control[horizon - 1].steer = nominal_control[horizon - 2].steer * 0.5; // Suy giảm góc lái cuối
+        nominal_control[horizon - 1].steer = nominal_control[horizon - 2].steer * STEER_DECAY_FACTOR; // Suy giảm góc lái cuối
+
+        auto end_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
+        RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500, "[PERF] control_loop execution time: %.2f ms", elapsed.count());
     }
 
     // ============================================================
@@ -770,7 +802,7 @@ private:
         m.color.b   = 0.0;
 
         geometry_msgs::msg::Point p;
-        p.x = x; p.y = y; p.z = 0.05;
+        p.x = x; p.y = y; p.z = VISUALIZATION_HEIGHT_Z;
         m.points.push_back(p);
 
         for (int t = 0; t < horizon; t++) {
@@ -778,7 +810,7 @@ private:
             y  += nominal_control[t].v * std::sin(th) * dt;
             th += nominal_control[t].v * std::tan(nominal_control[t].steer) / WHEELBASE * dt;
             th  = normalize_angle(th);
-            p.x = x; p.y = y;
+            p.x = x; p.y = y; p.z = VISUALIZATION_HEIGHT_Z;
             m.points.push_back(p);
         }
         pub_best_traj->publish(m);
