@@ -1,0 +1,26 @@
+teleop_twist_joy_node:
+  ros__parameters:
+    # ----------------------------------------------------
+    # PHẦN 1: GỘP CẢ ĐI THẲNG VÀ BẺ LÁI VÀO CÙNG 1 CẦN TRÁI
+    # (Đẩy xéo 45 độ để vừa đi thẳng vừa bẻ lái)
+    # ----------------------------------------------------
+    axis_linear:
+      x: 1      # Cần gạt BÊN TRÁI (Lên/Xuống) dùng để Tiến/Lùi
+    
+    axis_angular:
+      yaw: 0    # Cần gạt BÊN TRÁI (Trái/Phải) dùng để Quay Xoay xe
+    
+    # ----------------------------------------------------
+    # PHẦN 2: CÀI ĐẶT TỐC ĐỘ TỐI ĐA (LIMITS)
+    # ----------------------------------------------------
+    scale_linear:
+      x: 0.8    # Tốc độ tiến thẳng tối đa: 0.6 m/s
+    
+    scale_angular:
+      yaw: 0.6  # Tốc độ quay vòng tối đa: 0.4 rad/s
+
+    # ----------------------------------------------------
+    # PHẦN 3: NÚT KÍCH HOẠT (DEADMAN SWITCH)
+    # ----------------------------------------------------
+    require_enable_button: true  # Bắt buộc phải bấm cò mới chạy
+    enable_button: 4             # Nút kích hoạt: R1 (hoặc RB)
