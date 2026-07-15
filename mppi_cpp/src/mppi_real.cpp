@@ -33,6 +33,8 @@
 #include <algorithm>
 #include <mutex>
 #include <omp.h>
+#include <filesystem>
+#include <iomanip>
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
@@ -106,6 +108,32 @@ public:
         RCLCPP_INFO(get_logger(),
             "MPPI Real Controller started. WPs=%zu, H=%d, N=%d, dt=%.3fs",
             waypoints.size(), horizon, num_samples, dt);
+
+        // Khởi tạo thư mục và file log CSV
+        try {
+            std::filesystem::create_directories("/home/danh/mppi_logs");
+            auto now_time = std::chrono::system_clock::now();
+            auto in_time_t = std::chrono::system_clock::to_time_t(now_time);
+            std::stringstream ss;
+            ss << "/home/danh/mppi_logs/mppi_log_" 
+               << std::put_time(std::localtime(&in_time_t), "%Y%m%d_%H%M%S") << ".csv";
+            csv_log.open(ss.str());
+            if (csv_log.is_open()) {
+                csv_log << "time,x,y,theta,v_cur,target_v,steer_cmd,v_cmd,exec_time_ms,is_stopped,is_stuck,front_blocked,odom_delay,lidar_delay\n";
+                RCLCPP_INFO(get_logger(), "Đang ghi CSV log tại: %s", ss.str().c_str());
+            } else {
+                RCLCPP_ERROR(get_logger(), "Không mở được file CSV log tại: %s", ss.str().c_str());
+            }
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(get_logger(), "Lỗi khi tạo thư mục log: %s", e.what());
+        }
+    }
+
+    ~MPPIController() {
+        if (csv_log.is_open()) {
+            csv_log.close();
+            RCLCPP_INFO(get_logger(), "Đã đóng file CSV log.");
+        }
     }
 
 private:
@@ -269,6 +297,7 @@ private:
     double front_blocked_cooldown_until = 0.0;
 
     std::mt19937 rng;
+    std::ofstream csv_log;
 
     // ============================================================
     // [F] ROS INTERFACES
@@ -417,6 +446,14 @@ private:
             obs_stamp = obstacle_stamp;
         }
 
+        // --- Log 1: Độ trễ dữ liệu cảm biến (Sensor Latency Log) ---
+        double odom_delay = now_s - o_stamp.seconds();
+        double lidar_delay = now_s - obs_stamp.seconds();
+        if (got_odom && (odom_delay > 0.1 || (obs_stamp.nanoseconds() != 0 && lidar_delay > 0.1))) {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 500, 
+                "[LÀM CHẬM HỆ THỐNG] Độ trễ cảm biến cao! Odom: %.3fs, LiDAR: %.3fs", odom_delay, lidar_delay);
+        }
+
         // --- 4.2 Kiểm tra tính hợp lệ của dữ liệu đầu vào ---
         if (!got_odom || waypoints.empty() || (now_s - o_stamp.seconds() > ODOM_TIMEOUT_S)) {
             publish_drive(0.0, 0.0); // Dừng an toàn nếu mất tín hiệu
@@ -499,6 +536,13 @@ private:
         RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500,
             "Corridor: wall=%d(r=%.2f) | obs=%d(r=%.2f) | front=%.2fm",
             wall_cnt, r_wall, obs_cnt, r_obstacle, min_front_dist);
+
+        // --- Log 5: Hiệu quả của Corridor Filter ---
+        double obs_ratio = (wall_cnt + obs_cnt > 0) ? (double)obs_cnt / (wall_cnt + obs_cnt) * 100.0 : 0.0;
+        if (obs_ratio > 50.0) {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
+                "[CORRIDOR WARNING] Hơn %.1f%% điểm LiDAR bị phân loại là vật cản! Hãy kiểm tra xem hành lang quét 0.85m có quá rộng?", obs_ratio);
+        }
 
         // --- 4.6 Curvature Profiling → tốc độ mục tiêu theo hình dạng đường ---
         // Nhìn trước speed_lookahead_wps waypoints để phát hiện cua và giảm tốc sớm.
@@ -607,9 +651,14 @@ private:
             last_ema_steer = 0.0;
 
             // Hướng thoát: né về phía ít vật cản hơn
-            double esc_steer = (blk_cnt >= 3)
+            double esc_steer = (blk_cnt >= MIN_BLOCKED_COUNT)
                 ? ((sum_dy > 0) ? -MAX_STEER_RAD : MAX_STEER_RAD)
                 : ((rng() % 2 == 0) ? MAX_STEER_RAD : -MAX_STEER_RAD);
+
+            // --- Log 4: Chi tiết quyết định thoát hiểm ---
+            RCLCPP_WARN(get_logger(), 
+                "[ESCAPE DETAIL] Xe quyết định rẽ %s (steer = %.2f rad). Tổng lệch vật cản ngang: %.2f (Dương: vật cản bên trái, Âm: bên phải)", 
+                (esc_steer > 0 ? "TRÁI" : "PHẢI"), esc_steer, sum_dy);
 
             for (auto& c : nominal_control) { c.v = escape_speed; c.steer = esc_steer; }
         }
@@ -765,6 +814,34 @@ private:
 
         auto end_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
+
+        // --- Log 2: Phân phối điểm Cost của MPPI ---
+        double sum_cost = 0.0;
+        double max_cost = costs_buf[0];
+        for (double c : costs_buf) {
+            sum_cost += c;
+            if (c > max_cost) max_cost = c;
+        }
+        double avg_cost = sum_cost / num_samples;
+        RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
+            "[MPPI COST] Min (Best): %.1f | Avg: %.1f | Max: %.1f", min_cost, avg_cost, max_cost);
+
+        // --- Log 3: Độ lệch vô lăng (EMA Lag) ---
+        double steer_diff = std::abs(nominal_control[0].steer - last_ema_steer);
+        if (steer_diff > 0.15) { // Lệch hơn ~8 độ
+            RCLCPP_DEBUG_THROTTLE(get_logger(), *get_clock(), 500,
+                "[EMA LAG] Vô lăng đang đuổi theo MPPI: MPPI=%.2f rad, EMA=%.2f rad (Lệch: %.2f)", 
+                nominal_control[0].steer, last_ema_steer, steer_diff);
+        }
+
+        // --- Ghi dữ liệu vào CSV log file ---
+        if (csv_log.is_open()) {
+            csv_log << now_s << "," << x << "," << y << "," << th << "," << vc << "," 
+                    << target_v << "," << last_ema_steer << "," << last_ema_v << "," 
+                    << elapsed.count() << "," << is_stopped << "," << is_stuck << "," << front_blocked << ","
+                    << odom_delay << "," << lidar_delay << "\n";
+        }
+
         RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500, "[PERF] control_loop execution time: %.2f ms", elapsed.count());
     }
 
