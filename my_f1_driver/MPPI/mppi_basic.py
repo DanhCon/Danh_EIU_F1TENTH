@@ -66,12 +66,12 @@ class MPPIController(Node):
         self.w_track    = 60.0  # Bám đường raceline chặt (tăng từ 40 để xe bám sát vạch đường khi đi cực nhanh)
         self.w_progress = 1.5   # Tiến dọc đường đua (giảm để không lấn át cost tránh vật cản/bám cua)
         self.w_control  = 1.5   # Làm mịn lệnh điều khiển
-        self.w_obstacle = 100.0 # Tránh vật cản (trọng số cực lớn theo mppi_nhat)
+        self.w_obstacle = 500.0 # Tránh vật cản (trọng số cực lớn theo mppi_nhat)
         self.w_speed    = 5.0   # Bám vận tốc mục tiêu (giảm từ 15 để ưu tiên cho sự an toàn và bám đường lên trước)
         self.w_heading  = 15.0  # Bám hướng tiếp tuyến
 
         # Bán kính an toàn của xe (m)
-        self.robot_radius   = 0.4  # Tăng lên 0.30m (tạo lớp đệm 5cm an toàn quanh xe)
+        self.robot_radius   = 0.3  # Tăng lên 0.30m (tạo lớp đệm 5cm an toàn quanh xe)
         self.danger_radius  = 0.9  # Tăng tương ứng để khớp với robot_radius mới
 
         # Tốc độ mục tiêu lớn nhất trên đường thẳng (m/s)
@@ -79,7 +79,7 @@ class MPPIController(Node):
 
         # ── Tham số curvature-based speed profiling ─────────────────
         self.min_speed_curve = 1.8     # Tăng tốc độ tối thiểu khi vào cua gắt lên 1.8 m/s để duy trì động năng
-        self.curve_threshold = 0.5    # Ngưỡng độ cong (rad/m) bắt đầu giảm tốc (tăng từ 0.28 lên 0.35 để cho phép cua nhanh hơn)
+        self.curve_threshold = 0.35    # Ngưỡng độ cong (rad/m) bắt đầu giảm tốc (tăng từ 0.28 lên 0.35 để cho phép cua nhanh hơn)
         self.lookahead_wps   = 15      # Tăng số lượng waypoints nhìn trước lên 15 để phanh sớm trước cua từ tốc độ cao
 
         # Cửa sổ waypoint cục bộ
@@ -562,8 +562,7 @@ class MPPIController(Node):
         now_s = self.get_clock().now().nanoseconds / 1e9
 
         # Điều kiện 1: Tường chặn mũi xe
-        front_blocked = self.forward_min_obs_dist < 0.6
-        
+        front_blocked = self.forward_min_obs_dist < 0.2
         # Điều kiện 2: Kẹt sát bên hông & không nhúc nhích được
         # Nếu khoảng cách vật cản nhỏ hơn 0.45m và vận tốc rất bé
         side_blocked = (min_obs_dist < 0.45 and abs(self.v_cur) < 0.1)

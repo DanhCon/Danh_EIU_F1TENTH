@@ -147,7 +147,7 @@ private:
         "f1tenth_waypoint_generator/racelines/f1tenth_waypoint.csv";
 
     // Thông số cơ học xe
-    static constexpr double WHEELBASE     = 0.33;   // Chiều dài cơ sở (m)
+    static constexpr double WHEELBASE     = 0.39;   // Chiều dài cơ sở (m)
     static constexpr double MAX_STEER_RAD = 0.418;  // Góc lái vật lý tối đa (rad)
 
     // Hằng số dọn dẹp Magic Numbers
