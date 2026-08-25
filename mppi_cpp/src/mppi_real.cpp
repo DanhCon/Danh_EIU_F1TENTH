@@ -148,7 +148,7 @@ private:
 
     // Thông số cơ học xe
     static constexpr double WHEELBASE     = 0.39;   // Chiều dài cơ sở (m)
-    static constexpr double MAX_STEER_RAD = 0.418;  // Góc lái vật lý tối đa (rad)
+    static constexpr double MAX_STEER_RAD = 0.35;  // Góc lái vật lý tối đa (rad)
 
     // Hằng số dọn dẹp Magic Numbers
     static constexpr int    WP_WINDOW                     = 80;    // Cửa sổ waypoint cục bộ
@@ -163,8 +163,8 @@ private:
     static constexpr double DOWN_SAMPLE_ANGLE_DEG         = 1.0;   // Góc down-sample tia LiDAR (độ)
     static constexpr double CORRIDOR_MIN_DIST             = 0.1;   // Bỏ qua LiDAR quá gần xe (m)
     static constexpr double PROACTIVE_DECEL_MIN_DIST      = 0.5;   // Khoảng cách tối thiểu của giảm tốc chủ động (m)
-    static constexpr double MIN_BRAKING_DIST              = 0.8;   // Khoảng cách phanh tối thiểu (m)
-    static constexpr double BRAKING_MARGIN                = 0.3;   // Khoảng cách an toàn bổ sung khi phanh (m)
+    static constexpr double MIN_BRAKING_DIST              = 0.40;  // Khoảng cách phanh tối thiểu 40cm (m)
+    static constexpr double BRAKING_MARGIN                = 0.20;  // Khoảng cách an toàn bổ sung khi phanh (m)
     static constexpr double AABB_PADDING                  = 0.5;   // Padding cho bộ lọc nhanh AABB (m)
     static constexpr double EMERGENCY_MIN_DIST            = 0.1;   // Khoảng cách tối thiểu vùng phanh khẩn cấp (m)
     static constexpr double EMERGENCY_HALF_WIDTH          = 0.35;  // Nửa chiều rộng vùng phanh khẩn cấp (m)
@@ -186,17 +186,17 @@ private:
     // [B] THAM SỐ ĐIỀU CHỈNH (TUNE)
     // ============================================================
 
-    // -- MPPI Cost Weights --
-    double lambda_    = 120.0;  // Softmax temperature: cao→đều, thấp→tham lam trajectory tốt nhất
-    double w_track    = 6.0;    // Bám tâm đường (Đã giảm từ 10 xuống 6 để xe dám lấn làn né vật)
-    double w_heading  = 15.0;   // Song song đường đua (Đã giảm từ 35 xuống 15 để xe dám bẻ chéo đầu lách)
-    double w_progress =  5.0;   // Khuyến khích tiến về phía trước
-    double w_obs      = 150.0;  // Né chướng ngại vật (Tăng nhẹ để ưu tiên tính mạng)
-    double w_smooth   = 10.5;   // Phạt bẻ lái/thay đổi tốc độ đột ngột (giảm rack-rack)
+    // -- MPPI Cost Weights (Chế độ Thuần Bám Đường) --
+    double lambda_    = 120.0;  // Softmax temperature
+    double w_track    = 35.0;   // Ép xe bám khít tâm đường raceline
+    double w_heading  = 25.0;   // Ép đầu xe song song với hướng đường đua
+    double w_progress =  8.0;   // Khuyến khích tiến về phía trước nhanh nhất
+    double w_obs      =  0.0;   // TẮT MPPI NÉ VẬT CẢN (Đường chạy không uốn lách né)
+    double w_smooth   = 10.5;   // Phạt bẻ lái/thay đổi tốc độ đột ngột
     double w_speed    =  8.0;   // Bám tốc độ mục tiêu
 
     // -- Tốc độ & Gia tốc --
-    double target_speed_max = 2.5;  // Tốc độ tối đa (m/s)          [TUNE]
+    double target_speed_max = 3.0;  // Tốc độ tối đa (m/s)
     double min_speed_curve  = 1.5;  // Tốc độ tối thiểu trong cua (m/s)
     double max_accel        = 2.5;  // Gia tốc tăng tốc tối đa (m/s²)
     double max_decel        = 4.0;  // Gia tốc phanh tối đa (m/s²)
@@ -220,9 +220,9 @@ private:
     double r_wall          = 0.25;  // Bán kính nguy hiểm của tường 2 bên (m)
     double collision_cost  = 200.0; // Phạt cực nặng nếu quẹt trúng vật cản
 
-    // -- Proactive Deceleration (giảm tốc sớm khi có vật cản) --
-    double obs_decel_start_dist = 4.0;   // Bắt đầu giảm tốc khi vật cản cách (m)
-    double obs_decel_min_factor = 0.25;  // Hệ số tốc độ tối thiểu khi vật cản rất gần
+    // -- Proactive Deceleration --
+    double obs_decel_start_dist = 0.0;   // Tắt giảm tốc sớm từ xa để xe giữ tốc độ đua tối đa
+    double obs_decel_min_factor = 1.00;
 
     // -- Emergency Stop & Recovery --
     double stuck_timer_thresh         = 1.0;  // Thời gian xác nhận bị kẹt (s)
@@ -384,10 +384,10 @@ private:
     // ============================================================
 
     void lidar_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
-        // Lấy transform từ laser frame → map frame
+        // Lấy transform từ laser frame → car_frame ("base_link") để giữ tọa độ vật cản ở local frame
         geometry_msgs::msg::TransformStamped tf;
         try {
-            tf = tf_buffer->lookupTransform(map_frame, msg->header.frame_id, tf2::TimePointZero);
+            tf = tf_buffer->lookupTransform(car_frame, msg->header.frame_id, tf2::TimePointZero);
         } catch (...) { return; }
 
         auto& q = tf.transform.rotation;
@@ -412,7 +412,7 @@ private:
             });
         }
 
-        // Swap O(1) thay vì copy O(n)
+        // Swap O(1) thay vì copy O(n) - Lúc này map_obstacles chứa tọa độ local trong hệ base_link
         std::lock_guard<std::mutex> lock(obs_mutex);
         std::swap(map_obstacles, temp);
         obstacle_stamp = now();
@@ -518,9 +518,9 @@ private:
         double min_front_dist = 999.0;
 
         for (const auto& pt : raw_obs) {
-            double dx   = pt.x - x, dy = pt.y - y;
-            double dx_l = dx * std::cos(-th) - dy * std::sin(-th); // trục X xe (phía trước)
-            double dy_l = dx * std::sin(-th) + dy * std::cos(-th); // trục Y xe (bên trái)
+            // raw_obs đã ở sẵn trong hệ tọa độ base_link của xe (tránh trễ/lệch hệ tọa độ do Odom lag)
+            double dx_l = pt.x; // trục X xe (phía trước)
+            double dy_l = pt.y; // trục Y xe (bên trái)
 
             double r;
             if (dx_l > CORRIDOR_MIN_DIST && dx_l < corridor_max_d && std::abs(dy_l) < corridor_half_w) {
@@ -531,7 +531,10 @@ private:
                 r = r_wall;
                 wall_cnt++;
             }
-            obs_pts.push_back({pt.x, pt.y, r});
+            // Chuyển đổi sang hệ tọa độ map để MPPI mô phỏng quỹ đạo tương lai (dùng pose snapshot x,y,th)
+            double mx = x + pt.x * std::cos(th) - pt.y * std::sin(th);
+            double my = y + pt.x * std::sin(th) + pt.y * std::cos(th);
+            obs_pts.push_back({mx, my, r});
         }
         RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500,
             "Corridor: wall=%d(r=%.2f) | obs=%d(r=%.2f) | front=%.2fm",
@@ -545,73 +548,69 @@ private:
         }
 
         // --- 4.6 Curvature Profiling → tốc độ mục tiêu theo hình dạng đường ---
-        // Nhìn trước speed_lookahead_wps waypoints để phát hiện cua và giảm tốc sớm.
         double max_c = 0.0;
         for (int i = 0; i < speed_lookahead_wps; i++) {
             double c = std::abs(waypoint_curvatures[(nearest_wp + i) % (int)waypoints.size()]);
             if (c > max_c) max_c = c;
         }
-        // speed_factor: 1.0 khi thẳng, giảm dần khi cua gắt
         double speed_factor = (max_c > curve_thresh)
             ? std::max(0.0, 1.0 - (max_c - curve_thresh) / curve_thresh)
             : 1.0;
         double target_v = min_speed_curve + (target_speed_max - min_speed_curve) * speed_factor;
 
-        // --- 4.7 Proactive Deceleration: giảm tốc sớm khi vật cản tiến gần ---
-        if (min_front_dist < obs_decel_start_dist) {
+        // --- 4.7 Proactive Deceleration ---
+        if (obs_decel_start_dist > 0.01 && min_front_dist < obs_decel_start_dist) {
             double f = obs_decel_min_factor
                 + (1.0 - obs_decel_min_factor) * ((min_front_dist - PROACTIVE_DECEL_MIN_DIST) / (obs_decel_start_dist - PROACTIVE_DECEL_MIN_DIST));
             f = std::max(obs_decel_min_factor, std::min(1.0, f));
             target_v = std::min(target_v, target_speed_max * f);
-            RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 200,
-                "Proactive Decel: dist=%.2fm → tgt_v=%.2fm/s", min_front_dist, target_v);
         }
 
-        // Giới hạn tốc độ thay đổi theo gia tốc / phanh tối đa (tránh jump đột ngột)
         target_v = std::min(last_target_speed + max_accel * dt, target_v);
         target_v = std::max(last_target_speed - max_decel * dt, target_v);
         last_target_speed = target_v;
 
-        // --- 4.8 Kiểm tra front_blocked: vật cản trong khoảng phanh ---
-        // Chỉ kiểm tra khi dữ liệu LiDAR còn mới (<0.5s) và hết cooldown sau escape.
+        // --- 4.8 Kiểm tra front_blocked: Phanh Khẩn Cấp Nón 20 Độ (2 bên trục trung tâm) ---
         bool   front_blocked = false;
-        double sum_dy        = 0.0; // Tổng dy vật cản (để chọn hướng thoát)
+        double sum_dy        = 0.0;
         int    blk_cnt       = 0;
 
         double obs_age = now_s - obs_stamp.seconds();
         bool obs_fresh = (obs_stamp.nanoseconds() != 0 && obs_age < LIDAR_TIMEOUT_S);
         
-        // Log lỗi 1: Cảnh báo nếu LiDAR bị trễ (vô hiệu hóa phanh khẩn cấp)
         if (obs_stamp.nanoseconds() != 0 && !obs_fresh) {
             RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, 
                 "[CẢNH BÁO] LiDAR bị trễ %.2fs (>%.1fs). Phanh khẩn cấp đang bị TẮT để tránh lỗi!", obs_age, LIDAR_TIMEOUT_S);
         }
 
         if (obs_fresh && now_s > front_blocked_cooldown_until) {
-            // Khoảng cách phanh = v²/(2a) + margin
+            // Khoảng cách phanh khẩn cấp theo công thức động năng: S_phanh = max(40cm, v²/(2a) + margin)
             double braking_d = std::max(MIN_BRAKING_DIST, vc * vc / (2.0 * max_decel) + BRAKING_MARGIN);
-            double pre_bound = braking_d + AABB_PADDING; // Pre-filter nhanh (AABB)
 
-            for (const auto& o : obs_pts) {
-                double dx = o.x - x, dy = o.y - y;
-                if (std::abs(dx) > pre_bound || std::abs(dy) > pre_bound) continue;
-                double dx_l = dx * std::cos(-th) - dy * std::sin(-th);
-                double dy_l = dx * std::sin(-th) + dy * std::cos(-th);
-                if (dx_l > EMERGENCY_MIN_DIST && dx_l < braking_d && std::abs(dy_l) < EMERGENCY_HALF_WIDTH) {
+            // Duyệt các tia LiDAR trong hệ tọa độ base_link của xe
+            for (const auto& pt : raw_obs) {
+                double dx_l = pt.x;
+                double dy_l = pt.y;
+                if (dx_l <= EMERGENCY_MIN_DIST || dx_l >= braking_d) continue;
+
+                // Tính góc lệch so với trục trung tâm phía trước (độ)
+                double angle_deg = std::abs(std::atan2(dy_l, dx_l) * 180.0 / M_PI);
+
+                // Kiểm tra góc nón 20 độ 2 bên trục trung tâm (tổng 40 độ)
+                if (angle_deg <= 20.0) {
                     sum_dy += dy_l;
                     blk_cnt++;
-                    // Log điểm rơi vào vùng tử thần (để check lỗi TF Ghosting hoặc nhiễu)
                     RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500, 
-                        "[DEBUG LiDAR] Tia chạm vùng nguy hiểm: dx_l=%.2f (cần <%.2f), dy_l=%.2f (cần <%.2f)", dx_l, braking_d, dy_l, EMERGENCY_HALF_WIDTH);
+                        "[DEBUG LiDAR] Tia chạm nón phanh 20deg: dx_l=%.2fm (cần <%.2fm), angle=%.1fdeg", dx_l, braking_d, angle_deg);
                 }
             }
             
-            // Sửa lỗi 2: Chống nhiễu LiDAR (Bóng ma) - Yêu cầu ít nhất 3 điểm
+            // Nếu có ít nhất 3 tia chạm vào vùng phanh nón 20 deg -> Phanh đứng hình an toàn!
             if (blk_cnt >= MIN_BLOCKED_COUNT) {
                 front_blocked = true;
-                RCLCPP_WARN(get_logger(), "[PHANH KHẨN CẤP] Phát hiện vật cản thật! Số tia chạm: %d, Tổng lệch ngang(sum_dy): %.2f", blk_cnt, sum_dy);
+                RCLCPP_WARN(get_logger(), "[PHANH KHẨN CẤP AN TOÀN] Vật cản xuất hiện trong góc nón 20deg ở khoảng phanh %.2fm! Số tia: %d", braking_d, blk_cnt);
             } else if (blk_cnt > 0) {
-                RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500, "[BỎ QUA] Có %d tia chạm vật cản, nhưng < %d tia (Nhiễu/Bóng ma).", blk_cnt, MIN_BLOCKED_COUNT);
+                RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 500, "[BỎ QUA] Có %d tia chạm nón phanh, nhưng < %d tia (Nhiễu/Bóng ma).", blk_cnt, MIN_BLOCKED_COUNT);
             }
         }
 
