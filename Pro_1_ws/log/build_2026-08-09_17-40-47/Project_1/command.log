@@ -1,0 +1,6 @@
+Invoking command in '/home/danh/Pro_1_ws/build/Project_1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/danh/Pro_1_ws/src/Project_1 -DCMAKE_INSTALL_PREFIX=/home/danh/Pro_1_ws/install/Project_1
+Invoked command in '/home/danh/Pro_1_ws/build/Project_1' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake /home/danh/Pro_1_ws/src/Project_1 -DCMAKE_INSTALL_PREFIX=/home/danh/Pro_1_ws/install/Project_1
+Invoking command in '/home/danh/Pro_1_ws/build/Project_1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/danh/Pro_1_ws/build/Project_1 -- -j16 -l16
+Invoked command in '/home/danh/Pro_1_ws/build/Project_1' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --build /home/danh/Pro_1_ws/build/Project_1 -- -j16 -l16
+Invoking command in '/home/danh/Pro_1_ws/build/Project_1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/danh/Pro_1_ws/build/Project_1
+Invoked command in '/home/danh/Pro_1_ws/build/Project_1' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/opt/ros/humble /usr/bin/cmake --install /home/danh/Pro_1_ws/build/Project_1

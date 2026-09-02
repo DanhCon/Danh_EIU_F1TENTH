@@ -1,0 +1,9 @@
+/home/danh/Pro_1_ws/build/project_1/CMakeFiles/uninstall.dir
+/home/danh/Pro_1_ws/build/project_1/CMakeFiles/project_1_uninstall.dir
+/home/danh/Pro_1_ws/build/project_1/CMakeFiles/test.dir
+/home/danh/Pro_1_ws/build/project_1/CMakeFiles/edit_cache.dir
+/home/danh/Pro_1_ws/build/project_1/CMakeFiles/rebuild_cache.dir
+/home/danh/Pro_1_ws/build/project_1/CMakeFiles/list_install_components.dir
+/home/danh/Pro_1_ws/build/project_1/CMakeFiles/install.dir
+/home/danh/Pro_1_ws/build/project_1/CMakeFiles/install/local.dir
+/home/danh/Pro_1_ws/build/project_1/CMakeFiles/install/strip.dir

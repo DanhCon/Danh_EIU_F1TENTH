@@ -1,0 +1,46 @@
+[0.011s] Invoking command in '/home/danh/Pro_1_ws/build/project_1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/danh/ros2_ws/install/my_python_package:/opt/ros/humble /usr/bin/cmake --build /home/danh/Pro_1_ws/build/project_1 -- -j16 -l16
+[0.033s] -- Found std_msgs: 4.9.1 (/opt/ros/humble/share/std_msgs/cmake)
+[0.154s] -- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.156s] -- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.160s] -- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.167s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.176s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.193s] -- Found sensor_msgs: 4.9.1 (/opt/ros/humble/share/sensor_msgs/cmake)
+[0.214s] -- Found tf2_ros: 0.25.20 (/opt/ros/humble/share/tf2_ros/cmake)
+[0.247s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[0.248s] -- Found rmw_fastrtps_cpp: 6.2.10 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[0.343s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[0.413s] -- Found nav_msgs: 4.9.1 (/opt/ros/humble/share/nav_msgs/cmake)
+[0.425s] -- Found rclpy: 3.3.21 (/opt/ros/humble/share/rclpy/cmake)
+[0.426s] -- Found ament_lint_auto: 0.12.15 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[0.481s] -- Added test 'flake8' to check Python code syntax and style conventions
+[0.481s] -- Added test 'lint_cmake' to check CMake code style
+[0.481s] -- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+[0.482s] -- Added test 'xmllint' to check XML markup files
+[0.483s] -- Configuring done
+[0.487s] -- Generating done
+[0.489s] -- Build files have been written to: /home/danh/Pro_1_ws/build/project_1
+[0.515s] Invoked command in '/home/danh/Pro_1_ws/build/project_1' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/danh/ros2_ws/install/my_python_package:/opt/ros/humble /usr/bin/cmake --build /home/danh/Pro_1_ws/build/project_1 -- -j16 -l16
+[0.524s] Invoking command in '/home/danh/Pro_1_ws/build/project_1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/danh/ros2_ws/install/my_python_package:/opt/ros/humble /usr/bin/cmake --install /home/danh/Pro_1_ws/build/project_1
+[0.530s] -- Install configuration: ""
+[0.530s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/lib/project_1/zlac_odom_node.py
+[0.530s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/lib/project_1/zlac8015d_driver.py
+[0.530s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/lib/project_1/1_test_quay_1_banh.py
+[0.530s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/lib/project_1/test.py
+[0.530s] -- Installing: /home/danh/Pro_1_ws/install/project_1/lib/project_1/eiu_test_angular.py
+[0.530s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/ament_index/resource_index/package_run_dependencies/project_1
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/ament_index/resource_index/parent_prefix_path/project_1
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/project_1/environment/ament_prefix_path.sh
+[0.531s] -- Installing: /home/danh/Pro_1_ws/install/project_1/share/project_1/environment/ament_prefix_path.dsv
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/project_1/environment/path.sh
+[0.531s] -- Installing: /home/danh/Pro_1_ws/install/project_1/share/project_1/environment/path.dsv
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/project_1/local_setup.bash
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/project_1/local_setup.sh
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/project_1/local_setup.zsh
+[0.531s] -- Installing: /home/danh/Pro_1_ws/install/project_1/share/project_1/local_setup.dsv
+[0.531s] -- Installing: /home/danh/Pro_1_ws/install/project_1/share/project_1/package.dsv
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/ament_index/resource_index/packages/project_1
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/project_1/cmake/project_1Config.cmake
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/project_1/cmake/project_1Config-version.cmake
+[0.531s] -- Up-to-date: /home/danh/Pro_1_ws/install/project_1/share/project_1/package.xml
+[0.533s] Invoked command in '/home/danh/Pro_1_ws/build/project_1' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/danh/ros2_ws/install/my_python_package:/opt/ros/humble /usr/bin/cmake --install /home/danh/Pro_1_ws/build/project_1

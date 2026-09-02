@@ -1,0 +1,5 @@
+[31mCMake Error at cmake_install.cmake:46 (file):
+  file INSTALL cannot find "/home/danh/Pro_1_ws/src/project_1/src/test.py":
+  No such file or directory.
+
+[0m

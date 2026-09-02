@@ -14,7 +14,7 @@ class EIU_TestAngular(Node):
         self.current_speed = 2.5 # Tốc độ mong muốn ban đầu
         
         # SUBSCRIBER de lay JointState (Đoạn đường) tinh Odom Tuyet Doi
-        self.joint_sub = self.create_subscription(Odometry, 'odom', self.joint_callback, 10)
+        self.joint_sub = self.create_subscription(Odometry, 'odom', self.odom_callback, 10)
         
         # PUBLISHER gui cmd_vel
         self.cmd_pub = self.create_publisher(Twist, 'cmd_vel', 10)
@@ -24,17 +24,16 @@ class EIU_TestAngular(Node):
         self.accumulated_angle = 0.0
         self.is_running = True
         
-        self.get_logger().info("=== Kiem chung phuong phap EIU ===")
         
         
         # Timer de lien tuc gui cmd_vel 
         self.timer = self.create_timer(0.1, self.timer_callback)
 
-    def joint_callback(self, msg):
+    def odom_callback(self, msg):
 
         
         if not self.is_running: return
-        if len(msg.position) < 2: return
+
         
         l_curr = msg.position[0]
         r_curr = msg.position[1]
