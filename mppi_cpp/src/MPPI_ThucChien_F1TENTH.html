@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hướng Dẫn Thực Chiến MPPI — Xe F1TENTH Thật</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+    window.MathJax = {
+        tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']], tags: 'ams' },
+        chtml: { scale: 1 }
+    };
+    </script>
+    <style>
+        :root { --primary:#0f172a; --accent:#2563eb; --bg:#fff; --text:#1e293b; --text-secondary:#475569; --border:#e2e8f0; --shadow:0 4px 6px -1px rgba(0,0,0,0.1); }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif; font-size:16.5px; line-height:1.85; color:var(--text); background:var(--bg); max-width:920px; margin:0 auto; padding:40px 25px; }
+        .cover-page { text-align:center; padding:50px 20px; border-bottom:3px solid var(--accent); margin-bottom:45px; background:#f8fafc; border-radius:12px; }
+        .cover-page h1 { font-size:2.1em; color:var(--primary); margin-bottom:12px; line-height:1.3; border:none; padding:0; }
+        .cover-page .subtitle { font-size:1.25em; color:var(--accent); font-weight:600; margin-bottom:18px; }
+        .cover-page .tagline { font-size:1em; color:var(--text-secondary); font-style:italic; max-width:720px; margin:0 auto 20px; }
+        .cover-page .meta { font-size:0.93em; color:var(--text-secondary); }
+        h1 { font-size:1.7em; color:var(--primary); margin:42px 0 16px; border-bottom:2px solid var(--accent); padding-bottom:8px; }
+        h2 { font-size:1.28em; color:var(--accent); margin:28px 0 12px; }
+        h3 { font-size:1.1em; color:var(--primary); margin:20px 0 9px; }
+        .part-header { color:white; padding:24px 30px; border-radius:10px; margin:46px 0 24px; box-shadow:var(--shadow); }
+        .part-header h1 { color:white; border:none; margin:0; font-size:1.5em; padding:0; }
+        .part-header p { color:rgba(255,255,255,0.85); margin-top:7px; font-size:1em; }
+        .ph-red { background:linear-gradient(135deg,#991b1b,#ef4444); }
+        .ph-blue { background:linear-gradient(135deg,#1e3a8a,#2563eb); }
+        .ph-green { background:linear-gradient(135deg,#065f46,#10b981); }
+        .ph-orange { background:linear-gradient(135deg,#b45309,#f59e0b); }
+        .ph-purple { background:linear-gradient(135deg,#581c87,#a855f7); }
+        .ph-teal { background:linear-gradient(135deg,#134e4a,#14b8a6); }
+        p { margin:10px 0; text-align:justify; }
+        ul, ol { margin:9px 0 13px 22px; }
+        li { margin:5px 0; }
+        strong { color:#0f172a; font-weight:600; }
+        blockquote { border-left:4px solid var(--accent); background:#f8fafc; padding:13px 17px; margin:16px 0; font-style:italic; color:var(--text-secondary); border-radius:0 8px 8px 0; }
+        .highlight { background:#fef08a; padding:2px 6px; border-radius:4px; font-weight:600; }
+        .definition,.theorem,.important-note,.example-box,.analogy-box,.visual-box,.warning-box { padding:16px 20px; border-radius:8px; margin:17px 0; border-left:5px solid; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+        .definition { background:#eff6ff; border-color:#3b82f6; } .definition .box-title { color:#1d4ed8; }
+        .theorem { background:#faf5ff; border-color:#a855f7; } .theorem .box-title { color:#7e22ce; }
+        .important-note { background:#fffbeb; border-color:#f59e0b; } .important-note .box-title { color:#b45309; }
+        .example-box { background:#f0fdf4; border-color:#22c55e; } .example-box .box-title { color:#15803d; }
+        .analogy-box { background:#fff7ed; border-color:#ea580c; } .analogy-box .box-title { color:#c2410c; }
+        .visual-box { background:#f0f9ff; border-color:#0ea5e9; } .visual-box .box-title { color:#0369a1; }
+        .warning-box { background:#fef2f2; border-color:#ef4444; } .warning-box .box-title { color:#b91c1c; }
+        .box-title { font-weight:700; font-size:1.02em; margin-bottom:9px; display:block; }
+        .step-card { background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid var(--accent); border-radius:6px; padding:13px 17px; margin:11px 0; }
+        .step-number { display:inline-block; background:var(--accent); color:white; padding:2px 10px; border-radius:12px; font-size:0.85em; font-weight:700; margin-right:8px; }
+        table { width:100%; border-collapse:collapse; margin:15px 0; font-size:0.94em; }
+        th, td { border:1px solid var(--border); padding:8px 12px; text-align:left; }
+        th { background:var(--primary); color:white; font-weight:600; }
+        tr:nth-child(even) { background:#f8fafc; }
+        pre { background:#0f172a; color:#f8fafc; padding:15px 18px; border-radius:8px; overflow-x:auto; font-family:"Fira Code",Consolas,Monaco,monospace; font-size:0.86em; line-height:1.5; margin:15px 0; }
+        code { font-family:"Fira Code",Consolas,Monaco,monospace; background:#f1f5f9; padding:2px 5px; border-radius:4px; font-size:0.9em; color:#b91c1c; }
+        pre code { background:transparent; color:inherit; padding:0; }
+        .ascii-diagram { background:#f1f5f9; border:1px solid #cbd5e1; padding:14px 18px; border-radius:8px; font-family:"Fira Code",Consolas,Monaco,monospace; font-size:0.82em; line-height:1.4; white-space:pre; overflow-x:auto; margin:13px 0; color:var(--primary); }
+        .toc { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:20px 26px; margin:24px 0; }
+        .toc h2 { margin-top:0; color:var(--primary); }
+        .toc ul { list-style:none; margin-left:0; }
+        .toc > ul > li { margin:6px 0; font-weight:600; color:var(--primary); }
+        .toc > ul > li > ul > li { font-weight:400; color:var(--text); margin:3px 0; padding-left:18px; }
+        .toc a { color:inherit; text-decoration:none; } .toc a:hover { color:var(--accent); text-decoration:underline; }
+        .checklist { list-style:none; margin-left:0; }
+        .checklist li { padding:4px 0; }
+        .checklist li::before { content:"☐ "; font-size:1.1em; }
+        .print-btn { position:fixed; bottom:30px; right:30px; background:var(--accent); color:white; border:none; padding:12px 22px; border-radius:30px; font-size:0.95em; font-weight:600; cursor:pointer; box-shadow:0 4px 14px rgba(37,99,235,0.4); transition:all 0.2s; z-index:1000; }
+        .print-btn:hover { background:#1d4ed8; transform:translateY(-2px); }
+        @media print { body{padding:15px;font-size:11pt;max-width:100%} .print-btn{display:none} .part-header{page-break-before:always} .definition,.theorem,.example-box,.important-note,.analogy-box,.visual-box,.warning-box,.step-card{break-inside:avoid} }
+    </style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">📄 Xuất PDF</button>
+
+<!-- ===== COVER ===== -->
+<div class="cover-page">
+    <h1>Hướng Dẫn Thực Chiến MPPI</h1>
+    <div class="subtitle">MODEL PREDICTIVE PATH INTEGRAL — TỪ CODE → XE F1TENTH THẬT</div>
+    <div class="tagline">
+        Phân tích toàn bộ file <strong>mppi_real.cpp</strong>: Kiến trúc đa luồng — Corridor Filter — Curvature Profiling — MPPI Sampling &amp; Cost — Emergency Stop &amp; Escape — Anti-stuck Watchdog — Tuning từng tham số — Debug &amp; Logging thực tế
+    </div>
+    <hr style="width:50%;margin:18px auto;border:none;border-top:1px solid #cbd5e1;">
+    <div class="meta">
+        <p><strong>Đối tượng:</strong> Người muốn hiểu sâu &amp; triển khai MPPI controller cho xe đua tự lái F1TENTH</p>
+        <p><strong>File phân tích:</strong> <code>src/mppi_cpp/src/mppi_real.cpp</code> (1017 dòng)</p>
+        <p><strong>Framework:</strong> ROS 2 (rclcpp) + OpenMP + Ackermann drive</p>
+    </div>
+</div>
+
+<!-- ===== TOC ===== -->
+<div class="toc">
+    <h2>📋 Mục Lục</h2>
+    <ul>
+        <li><a href="#ch0">Chương 0: Bức tranh Tổng thể — MPPI là gì &amp; hoạt động ra sao?</a></li>
+        <li><a href="#ch1">Chương 1: Kiến trúc Đa luồng &amp; Dữ liệu ROS</a>
+            <ul>
+                <li><a href="#c1.1">1.1 Sơ đồ luồng xử lý</a></li>
+                <li><a href="#c1.2">1.2 Topic, Callback &amp; Mutex</a></li>
+                <li><a href="#c1.3">1.3 Struct dữ liệu hỗ trợ</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch2">Chương 2: Cấu hình &amp; Tham số Phần cứng</a>
+            <ul>
+                <li><a href="#c2.1">2.1 Thông số cơ học xe</a></li>
+                <li><a href="#c2.2">2.2 Cấu hình Waypoint &amp; LiDAR</a></li>
+                <li><a href="#c2.3">2.3 Cấu hình Phanh &amp; An toàn</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch3">Chương 3: Trái tim MPPI — Bộ tham số Tuning</a>
+            <ul>
+                <li><a href="#c3.1">3.1 Cost Weights — Trọng số chi phí</a></li>
+                <li><a href="#c3.2">3.2 Tốc độ, Gia tốc &amp; Curvature Profiling</a></li>
+                <li><a href="#c3.3">3.3 Corridor Filter — Phân loại LiDAR</a></li>
+                <li><a href="#c3.4">3.4 Emergency, EMA &amp; Exploration Noise</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch4">Chương 4: Hành trình Một Vòng lặp Điều khiển (control_loop)</a>
+            <ul>
+                <li><a href="#c4.1">4.1 Từ Snapshot đến Waypoint</a></li>
+                <li><a href="#c4.2">4.2 Corridor Filter &amp; Curvature Profiling</a></li>
+                <li><a href="#c4.3">4.3 Proactive Decel &amp; Front Blocked</a></li>
+                <li><a href="#c4.4">4.4 Anti-stuck Watchdog &amp; Escape</a></li>
+                <li><a href="#c4.5">4.5 MPPI Sampling &amp; Cost (OpenMP)</a></li>
+                <li><a href="#c4.6">4.6 Weight Update &amp; EMA Smoothing</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch5">Chương 5: Toán học bên trong — Bicycle Model &amp; Cost Function</a>
+            <ul>
+                <li><a href="#c5.1">5.1 Mô hình xe đạp (Bicycle Model)</a></li>
+                <li><a href="#c5.2">5.2 Hàm chi phí 6 thành phần</a></li>
+                <li><a href="#c5.3">5.3 Softmax Weight Update</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch6">Chương 6: An toàn — Phanh khẩn cấp &amp; Thoát hiểm</a>
+            <ul>
+                <li><a href="#c6.1">6.1 Cơ chế Front Blocked</a></li>
+                <li><a href="#c6.2">6.2 Escape Maneuver — Lùi xe thông minh</a></li>
+                <li><a href="#c6.3">6.3 Anti-stuck Watchdog</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch7">Chương 7: Logging, Debug &amp; Visualization</a>
+            <ul>
+                <li><a href="#c7.1">7.1 CSV Log chi tiết</a></li>
+                <li><a href="#c7.2">7.2 Các dòng log ROS quan trọng</a></li>
+                <li><a href="#c7.3">7.3 Visualization trên RViz</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch8">Chương 8: Build, Chạy &amp; Tuning trên xe Thật</a>
+            <ul>
+                <li><a href="#c8.1">8.1 Build &amp; Run</a></li>
+                <li><a href="#c8.2">8.2 Checklist an toàn trước khi chạy</a></li>
+                <li><a href="#c8.3">8.3 Bảng triệu chứng — Chẩn đoán &amp; sửa lỗi</a></li>
+                <li><a href="#c8.4">8.4 Quy trình Tuning từng tham số</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch9">Chương 9: Mở rộng — Sau MPPI cơ bản thì làm gì?</a></li>
+    </ul>
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH0: BỨC TRANH TỔNG THỂ                        -->
+<!-- ############################################## -->
+<div class="part-header ph-red" id="ch0">
+    <h1>Chương 0: Bức tranh Tổng thể — MPPI là gì &amp; hoạt động ra sao?</h1>
+    <p>Từ ý tưởng "thử hàng trăm quỹ đạo ngẫu nhiên" đến một chiếc xe đua thật trên đường đua</p>
+</div>
+
+<div class="analogy-box">
+    <span class="box-title">🎲 Ẩn dụ: MPPI giống như "thử nhiều nước đi rồi chọn nước tốt nhất"</span>
+    <p>Hãy tưởng tượng bạn là tay lái F1: mỗi mili-giây bạn hình dung ra <strong>500 cách lái khác nhau</strong> (chậm hơn, nhanh hơn, đánh lái nhiều, đánh lái ít...), "mô phỏng nhanh" từng cách trong đầu 1.5 giây tới, đánh giá cách nào an toàn nhất + nhanh nhất + không va tường, rồi thực hiện bước đầu tiên của cách tốt nhất. Đó chính là MPPI!</p>
+</div>
+
+<div class="definition">
+    <span class="box-title">🎯 Định nghĩa MPPI (Model Predictive Path Integral)</span>
+    <p><strong>MPPI</strong> là một phương pháp điều khiển dự báo dựa trên <strong>lấy mẫu ngẫu nhiên (sampling-based)</strong>. Khác với MPC cổ điển (giải bài toán tối ưu), MPPI:</p>
+    <ul>
+        <li>Sinh $N$ quỹ đạo điều khiển <strong>ngẫu nhiên</strong> (mỗi quỹ đạo dài $H$ bước)</li>
+        <li>Mô phỏng từng quỹ đạo bằng <strong>bicycle model</strong></li>
+        <li>Tính <strong>chi phí (cost)</strong> cho từng quỹ đạo</li>
+        <li>Kết hợp lại bằng <strong>trọng số softmax</strong> để ra quỹ đạo danh nghĩa tối ưu</li>
+        <li>Chỉ thực hiện <strong>bước đầu tiên</strong>, rồi lặp lại (receding horizon)</li>
+    </ul>
+</div>
+
+<div class="visual-box">
+    <span class="box-title">🗺️ Bản đồ Kiến thức của file mppi_real.cpp:</span>
+</div>
+
+<div class="ascii-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│              KIẾN TRÚC MPPI REAL CONTROLLER                  │
+│                                                             │
+│  ┌─────────────────┐        ┌──────────────────────────┐    │
+│  │ lidar_callback  │        │      control_loop        │    │
+│  │ → map_obstacles │        │        (Timer 20 Hz)     │    │
+│  │   (obs_mutex)   │        │  1. Snapshot pose+obs    │    │
+│  └─────────────────┘        │  2. Tìm waypoint gần     │    │
+│  ┌─────────────────┐        │  3. Corridor Filter      │    │
+│  │ odom_callback   │───────▶│  4. Curvature Profiling  │    │
+│  │ → pose + v_cur  │        │  5. Proactive Decel      │    │
+│  │   (pose_mutex)  │        │  6. Front Blocked check  │    │
+│  └─────────────────┘        │  7. Anti-stuck watchdog  │    │
+│                             │  8. Emergency + Escape   │    │
+│  ┌─────────────────┐        │  9. MPPI sampling        │    │
+│  │ waypoint CSV    │        │ 10. MPPI cost (OpenMP)   │    │
+│  │ → headings+curv │        │ 11. Weight update        │    │
+│  └─────────────────┘        │ 12. EMA smoothing        │    │
+│                             │ 13. Publish /drive       │    │
+│                             │ 14. Shift horizon        │    │
+│                             └────────────┬─────────────┘    │
+│                                          ▼                 │
+│                              ackermann_msgs → /drive       │
+│                              Marker → /mppi_best_trajectory│
+└─────────────────────────────────────────────────────────────┘
+</div>
+
+<div class="important-note">
+    <span class="box-title">⚡ Điểm độc đáo của code này so với MPPI "sách giáo khoa":</span>
+    <ul>
+        <li><strong>Corridor Filter</strong>: Không cần localization chính xác, chỉ cần heading từ Particle Filter để phân loại LiDAR thành tường/vật cản.</li>
+        <li><strong>3 lớp an toàn</strong>: Proactive Decel (giảm tốc sớm) → Front Blocked (phanh khẩn) → Escape (lùi xe thoát).</li>
+        <li><strong>Anti-stuck Watchdog</strong>: Phát hiện xe bị kẹt dù MPPI ra lệnh chạy → tự động thoát.</li>
+        <li><strong>Đa luồng + OpenMP</strong>: Callback LiDAR/Odom chạy song song với control_loop; cost MPPI được tính song song.</li>
+    </ul>
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH1: KIẾN TRÚC ĐA LUỒNG                        -->
+<!-- ############################################## -->
+<div class="part-header ph-blue" id="ch1">
+    <h1>Chương 1: Kiến trúc Đa luồng &amp; Dữ liệu ROS</h1>
+    <p>Hiểu cách 3 luồng (callback LiDAR, callback Odom, timer control) giao tiếp với nhau</p>
+</div>
+
+<h2 id="c1.1">1.1 Sơ đồ luồng xử lý</h2>
+
+<p>File này chạy trên <strong>MultiThreadedExecutor</strong> của ROS 2 (dòng 1012), nghĩa là các callback được xử lý song song trên nhiều thread. Điều này quan trọng vì:</p>
+
+<div class="ascii-diagram">
+Luồng chính (MultiThreadedExecutor):
+┌──────────────────────────────────────────────────────────┐
+│  Thread 1 ──▶ odom_callback   ──▶ cập nhật x0,y0,θ,v     │
+│  Thread 2 ──▶ lidar_callback  ──▶ cập nhật map_obstacles │
+│  Thread 3 ──▶ control_timer   ──▶ control_loop (20 Hz)   │
+└──────────────────────────────────────────────────────────┘
+
+Chia sẻ dữ liệu giữa các luồng:
+   odom_callback ──(pose_mutex)──▶ x0, y0, theta0, v_cur
+   lidar_callback ──(obs_mutex)──▶ map_obstacles
+   control_loop   ──(pose_mutex)──▶ đọc pose snapshot
+   control_loop   ──(obs_mutex)──▶ đọc obstacle snapshot
+</div>
+
+<div class="warning-box">
+    <span class="box-title">⚠️ Vì sao phải dùng Mutex?</span>
+    <p><code>odom_callback</code> ghi vào <code>x0, y0, theta0</code> trong khi <code>control_loop</code> đang đọc chúng. Nếu không có mutex, một luồng có thể đọc <strong>nửa chừng</strong> trong lúc luồng khác ghi → dữ liệu sai lệch (race condition). Mutex đảm bảo mỗi lần chỉ một luồng được đọc/ghi.</p>
+</div>
+
+<h2 id="c1.2">1.2 Topic, Callback &amp; Mutex</h2>
+
+<table>
+    <tr><th>Topic</th><th>Type</th><th>Hướng</th><th>Callback/Hàm</th><th>Bảo vệ bởi</th></tr>
+    <tr><td><code>/pf/pose/odom</code></td><td>Odometry</td><td>Subscribe</td><td><code>odom_callback</code></td><td><code>pose_mutex</code></td></tr>
+    <tr><td><code>/scan</code></td><td>LaserScan</td><td>Subscribe</td><td><code>lidar_callback</code></td><td><code>obs_mutex</code></td></tr>
+    <tr><td><code>/drive</code></td><td>AckermannDriveStamped</td><td>Publish</td><td><code>publish_drive</code></td><td>—</td></tr>
+    <tr><td><code>/mppi_best_trajectory</code></td><td>Marker</td><td>Publish</td><td><code>publish_best_trajectory</code></td><td>—</td></tr>
+    <tr><td><code>/publish_full_waypoint</code></td><td>MarkerArray</td><td>Publish</td><td><code>publish_waypoints_marker</code></td><td>—</td></tr>
+</table>
+
+<div class="step-card">
+    <span class="step-number">Odom</span> <strong><code>odom_callback</code> (dòng 377):</strong>
+    <ul>
+        <li>Nhận pose (x, y) + quaternion orientation + vận tốc từ Particle Filter</li>
+        <li>Chuyển quaternion → góc Euler $\theta$ bằng công thức: $\theta = \text{atan2}(\sin y, \cos y)$</li>
+        <li>Ghi vào biến dùng chung dưới <code>pose_mutex</code></li>
+    </ul>
+</div>
+
+<div class="step-card">
+    <span class="step-number">LiDAR</span> <strong><code>lidar_callback</code> (dòng 396):</strong>
+    <ul>
+        <li>Lấy transform từ laser frame → <code>base_link</code> bằng TF2 (giữ vật cản ở tọa độ local của xe)</li>
+        <li><strong>Down-sample</strong> theo góc 1° để giảm số điểm tính toán</li>
+        <li>Lọc khoảng cách hợp lệ: $0.1 \le r \le 3.5$ m</li>
+        <li>Chuyển từ tọa độ cực (r, θ) sang tọa độ vuông góc local (x, y)</li>
+        <li>Dùng <strong><code>std::swap</code> O(1)</strong> thay vì copy O(n) để cập nhật nhanh</li>
+    </ul>
+</div>
+
+<div class="important-note">
+    <span class="box-title">💡 Mẹo thiết kế thông minh: Swap O(1)</span>
+    <p>Thay vì <code>map_obstacles = temp</code> (copy toàn bộ vector), code dùng <code>std::swap(map_obstacles, temp)</code> — chỉ đổi con trỏ nội bộ, độ phức tạp O(1). Giảm tải CPU cho callback chạy tần suất cao.</p>
+</div>
+
+<h2 id="c1.3">1.3 Struct dữ liệu hỗ trợ</h2>
+
+<table>
+    <tr><th>Struct</th><th>Thành phần</th><th>Mô tả</th></tr>
+    <tr><td><code>Point2D</code></td><td><code>x, y</code></td><td>Tọa độ 2D (waypoint, điểm vật cản thô)</td></tr>
+    <tr><td><code>Control</code></td><td><code>v, steer</code></td><td>Lệnh điều khiển: vận tốc (m/s) + góc lái (rad)</td></tr>
+    <tr><td><code>ObsPt</code></td><td><code>x, y, r</code></td><td>Điểm vật cản kèm <strong>bán kính nguy hiểm</strong> r (dùng tính cost)</td></tr>
+</table>
+
+<div class="example-box">
+    <span class="box-title">🔢 Ví dụ về ý nghĩa bán kính nguy hiểm $r$:</span>
+    <p>Nếu một điểm tường có $r = 0.2$m, MPPI sẽ phạt bất kỳ quỹ đạo nào đi vào trong bán kính 0.2m quanh điểm đó. Nếu là vật cản có $r = 0.45$m, quỹ đạo bị phạt khi đi trong 0.45m — tức xe phải né <strong>xa hơn và sớm hơn</strong>.</p>
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH2: CẤU HÌNH PHẦN CỨNG                        -->
+<!-- ############################################## -->
+<div class="part-header ph-green" id="ch2">
+    <h1>Chương 2: Cấu hình &amp; Tham số Phần cứng</h1>
+    <p>Những hằng số "đóng băng" mô tả vật lý chiếc xe F1TENTH — không nên đổi khi chạy</p>
+</div>
+
+<h2 id="c2.1">2.1 Thông số cơ học xe</h2>
+
+<table>
+    <tr><th>Hằng số</th><th>Giá trị</th><th>Mô tả</th></tr>
+    <tr><td><code>WHEELBASE</code></td><td>0.39 m</td><td>Chiều dài cơ sở (khoảng cách 2 trục bánh) — dùng trong bicycle model</td></tr>
+    <tr><td><code>MAX_STEER_RAD</code></td><td>0.418 rad (~24°)</td><td>Góc lái vật lý tối đa của servo</td></tr>
+</table>
+
+<div class="definition">
+    <span class="box-title">📐 Công thức động học xe đạp dùng <code>WHEELBASE</code>:</span>
+    $$\dot{\theta} = \frac{v \cdot \tan(\delta)}{L}, \quad \text{với } L = \text{WHEELBASE}, \ \delta = \text{góc lái}$$
+</div>
+
+<h2 id="c2.2">2.2 Cấu hình Waypoint &amp; LiDAR</h2>
+
+<h3>Waypoint (từ CSV raceline)</h3>
+<table>
+    <tr><th>Hằng số</th><th>Giá trị</th><th>Mô tả</th></tr>
+    <tr><td><code>WP_WINDOW</code></td><td>80</td><td>Cửa sổ waypoint cục bộ cho MPPI tìm kiếm</td></tr>
+    <tr><td><code>WP_WINDOW_BACK</code></td><td>15</td><td>Số waypoint phía sau xe</td></tr>
+    <tr><td><code>WP_SEARCH_BACK</code></td><td>20</td><td>Cửa sổ tìm waypoint gần nhất lùi</td></tr>
+    <tr><td><code>WP_SEARCH_FORWARD</code></td><td>40</td><td>Cửa sổ tìm waypoint gần nhất tiến</td></tr>
+    <tr><td><code>TELEPORT_THRESHOLD_M</code></td><td>5.0 m</td><td>Nếu khoảng cách đến waypoint gần nhất &gt; 5m → nghi teleport, tìm toàn bộ</td></tr>
+</table>
+
+<h3>LiDAR</h3>
+<table>
+    <tr><th>Hằng số</th><th>Giá trị</th><th>Mô tả</th></tr>
+    <tr><td><code>MIN_LIDAR_RANGE</code></td><td>0.1 m</td><td>Bỏ qua điểm quét quá gần xe (nhiễu)</td></tr>
+    <tr><td><code>MAX_LIDAR_RANGE</code></td><td>3.5 m</td><td>Bỏ qua điểm quét quá xa (không cần cho tránh vật cản)</td></tr>
+    <tr><td><code>LIDAR_TIMEOUT_S</code></td><td>0.5 s</td><td>Nếu LiDAR quá 0.5s không có dữ liệu → coi như mất tín hiệu</td></tr>
+    <tr><td><code>DOWN_SAMPLE_ANGLE_DEG</code></td><td>1.0°</td><td>Chỉ lấy 1 tia mỗi 1° → giảm ~90% số điểm tính toán</td></tr>
+    <tr><td><code>ODOM_TIMEOUT_S</code></td><td>0.5 s</td><td>Mất tín hiệu Odom quá 0.5s → dừng xe an toàn</td></tr>
+</table>
+
+<h2 id="c2.3">2.3 Cấu hình Phanh &amp; An toàn</h2>
+
+<table>
+    <tr><th>Hằng số</th><th>Giá trị</th><th>Mô tả</th></tr>
+    <tr><td><code>CORRIDOR_MIN_DIST</code></td><td>0.1 m</td><td>Ngưỡng xác định điểm "phía trước xe" trong corridor</td></tr>
+    <tr><td><code>PROACTIVE_DECEL_MIN_DIST</code></td><td>0.5 m</td><td>Khoảng cách tối thiểu để tính hệ số giảm tốc</td></tr>
+    <tr><td><code>MIN_BRAKING_DIST</code></td><td>0.8 m</td><td>Quãng đường phanh tối thiểu</td></tr>
+    <tr><td><code>BRAKING_MARGIN</code></td><td>0.3 m</td><td>Khoảng cách an toàn thêm khi phanh</td></tr>
+    <tr><td><code>EMERGENCY_MIN_DIST</code></td><td>0.1 m</td><td>Giới hạn dưới vùng phanh khẩn cấp</td></tr>
+    <tr><td><code>EMERGENCY_HALF_WIDTH</code></td><td>0.3 m</td><td>Nửa chiều rộng vùng phanh khẩn cấp phía trước xe</td></tr>
+    <tr><td><code>MIN_BLOCKED_COUNT</code></td><td>3 tia</td><td>Cần ≥ 3 tia LiDAR chạm vùng nguy hiểm mới xác nhận vật cản thật</td></tr>
+    <tr><td><code>COLLISION_DISTANCE_M</code></td><td>0.2 m</td><td>Khoảng cách coi là va chạm trực tiếp</td></tr>
+</table>
+
+<div class="warning-box">
+    <span class="box-title">⚠️ Cảnh báo quan trọng về <code>MIN_BLOCKED_COUNT = 3</code>:</span>
+    <p>Đây là "bộ lọc chống nhiễu/bóng ma" (ghosting). Một hoặc hai tia LiDAR bất thường (nhiễu, phản xạ kỳ lạ) <strong>không đủ</strong> để kích hoạt phanh khẩn cấp. Chỉ khi có <strong>ít nhất 3 tia liên tiếp</strong> chạm vùng nguy hiểm mới tin là vật cản thật — tránh phanh "giật cục" do nhiễu.</p>
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH3: TRÁI TIM MPPI — THAM SỐ TUNING            -->
+<!-- ############################################## -->
+<div class="part-header ph-orange" id="ch3">
+    <h1>Chương 3: Trái tim MPPI — Bộ tham số Tuning</h1>
+    <p>Đây là những tham số bạn SẼ thay đổi hàng ngày khi chạy xe thật</p>
+</div>
+
+<h2 id="c3.1">3.1 Cost Weights — Trọng số chi phí</h2>
+
+<table>
+    <tr><th>Tham số</th><th>Giá trị</th><th>Vai trò</th><th>Ghi chú Tuning</th></tr>
+    <tr><td><code>lambda_</code></td><td>140.0</td><td>Softmax temperature</td><td>Cao → các quỹ đạo "đều tay" (khám phá). Thấp → "tham lam" quỹ đạo tốt nhất</td></tr>
+    <tr><td><code>w_track</code></td><td>8.0</td><td>Bám tâm đường</td><td>Giảm xuống để xe dám lùi làn tránh vật cản</td></tr>
+    <tr><td><code>w_heading</code></td><td>10.0</td><td>Song song đường đua</td><td>Giảm từ 35 → 15 → 10 để xe dám bẻ chéo đầu lách</td></tr>
+    <tr><td><code>w_progress</code></td><td>5.0</td><td>Khuyến khích tiến về phía trước</td><td>Ngăn xe dừng/cào ngược trong hành lang</td></tr>
+    <tr><td><code>w_obs</code></td><td><span class="highlight">250.0</span></td><td>Né chướng ngại vật</td><td>Rất cao → ưu tiên số 1 là không va chạm</td></tr>
+    <tr><td><code>w_smooth</code></td><td>10.5</td><td>Phạt đổi lái/tốc độ đột ngột</td><td>Tăng nếu xe bị "rack-rack" (lắc vô lăng)</td></tr>
+    <tr><td><code>w_speed</code></td><td>8.0</td><td>Bám tốc độ mục tiêu</td><td>Giữ tốc độ ổn định, ít khựng</td></tr>
+</table>
+
+<div class="important-note">
+    <span class="box-title">⚡ Quan sát quan trọng: <code>w_obs = 250</code> — lớn gấp ~30 lần w_track</span>
+    <p>Đây là một lựa chọn thiết kế có chủ đích: <strong>an toàn va chạm được đặt trên hết</strong>. MPPI sẽ hy sinh bám đường, hướng, và tốc độ chỉ để tránh vật cản. Khi tuning, hãy nhớ rằng thứ tự ưu tiên trong xe này là: <strong>Không va chạm → Né vật cản → An toàn → Bám đường → Tốc độ</strong>.</p>
+</div>
+
+<h2 id="c3.2">3.2 Tốc độ, Gia tốc &amp; Curvature Profiling</h2>
+
+<table>
+    <tr><th>Tham số</th><th>Giá trị</th><th>Mô tả</th></tr>
+    <tr><td><code>target_speed_max</code></td><td>1.5 m/s</td><td>Tốc độ tối đa trên đường thẳng</td></tr>
+    <tr><td><code>min_speed_curve</code></td><td>1.5 m/s</td><td>Tốc độ tối thiểu trong cua gắt</td></tr>
+    <tr><td><code>max_accel</code></td><td>2.5 m/s²</td><td>Giới hạn tăng tốc</td></tr>
+    <tr><td><code>max_decel</code></td><td>4.0 m/s²</td><td>Giới hạn phanh</td></tr>
+    <tr><td><code>curve_thresh</code></td><td>0.3 (1/m)</td><td>Độ cong ngưỡng "cua gắt"</td></tr>
+    <tr><td><code>speed_lookahead_wps</code></td><td>25</td><td>Số waypoint nhìn trước để dò cua</td></tr>
+</table>
+
+<div class="visual-box">
+    <span class="box-title">📈 Công thức Curvature Profiling:</span>
+    $$speed\_factor = \begin{cases} 1.0 &amp; \text{nếu } \kappa_{max} \le \kappa_{thresh} \\ \max(0, 1 - \frac{\kappa_{max} - \kappa_{thresh}}{\kappa_{thresh}}) &amp; \text{nếu cua gắt} \end{cases}$$
+    $$target\_v = v_{min} + (v_{max} - v_{min}) \cdot speed\_factor$$
+    <p>Ý nghĩa: đường thẳng → speed_factor = 1.0 → chạy max. Cua gắt hơn → speed_factor giảm dần → chạy chậm hơn, giảm dần về <code>min_speed_curve</code>.</p>
+</div>
+
+<h2 id="c3.3">3.3 Corridor Filter — Phân loại LiDAR</h2>
+
+<div class="definition">
+    <span class="box-title">🎯 Corridor Filter hoạt động thế nào?</span>
+    <p>Mỗi điểm LiDAR (đã ở tọa độ local của xe) được phân loại:</p>
+    <ul>
+        <li><strong>VẬT CẢN</strong> nếu nằm trong hành lang phía trước: $dx > 0.1$ m, $dx &lt; corridor\_max\_d$, $|dy| &lt; corridor\_half\_w$ → bán kính nguy hiểm <code>r_obstacle</code></li>
+        <li><strong>TƯỜNG</strong> nếu nằm ngoài (2 bên, phía sau) → bán kính nguy hiểm nhỏ <code>r_wall</code></li>
+    </ul>
+</div>
+
+<table>
+    <tr><th>Tham số</th><th>Giá trị</th><th>Mô tả</th></tr>
+    <tr><td><code>corridor_half_w</code></td><td>0.45 m</td><td>Nửa chiều rộng hành lang (giảm xuống 0.45m để không "nuốt" cả tường 2 bên vào vùng vật cản)</td></tr>
+    <tr><td><code>corridor_max_d</code></td><td>6.0 m</td><td>Chiều dài hành lang nhìn trước</td></tr>
+    <tr><td><code>r_obstacle</code></td><td>0.45 m</td><td>Bán kính nguy hiểm vật cản (lớn → ép MPPI né xa sớm)</td></tr>
+    <tr><td><code>r_wall</code></td><td>0.20 m</td><td>Bán kính nguy hiểm tường (nhỏ → xe dám chạy sát tường khi lách)</td></tr>
+    <tr><td><code>collision_cost</code></td><td>200.0</td><td>Phạt cực nặng khi quỹ đạo chạm vật cản</td></tr>
+</table>
+
+<div class="analogy-box">
+    <span class="box-title">🚧 Ẩn dụ: Hành lang phía trước giống như "làn đường của bạn"</span>
+    <p>Hãy tưởng tượng bạn đang lái xe trên một con đường hẹp. Thứ gì nằm <strong>đúng trước mặt bạn trong phạm vi làn đường</strong> là vật cản nguy hiểm (phải né xa). Thứ nằm <strong>2 bên lề</strong> chỉ là tường/ranh giới (được phép lướt gần). Corridor Filter tự động phân loại như vậy — đây là điểm mạnh vì <strong>không cần vị trí chính xác</strong> từ Particle Filter, chỉ cần heading.</p>
+</div>
+
+<h2 id="c3.4">3.4 Emergency, EMA &amp; Exploration Noise</h2>
+
+<h3>Emergency Stop &amp; Recovery</h3>
+<table>
+    <tr><th>Tham số</th><th>Giá trị</th><th>Mô tả</th></tr>
+    <tr><td><code>stuck_timer_thresh</code></td><td>1.0 s</td><td>Thời gian quan sát trước khi xác nhận bị kẹt</td></tr>
+    <tr><td><code>stop_timer_duration</code></td><td>1.0 s</td><td>Thời gian lùi thoát hiểm</td></tr>
+    <tr><td><code>escape_speed</code></td><td><span class="highlight">-0.8 m/s</span></td><td>Tốc độ LÙI khi thoát hiểm</td></tr>
+    <tr><td><code>watchdog_cooldown_duration</code></td><td>2.0 s</td><td>Cooldown watchdog sau escape</td></tr>
+    <tr><td><code>front_blocked_cooldown_dur</code></td><td>1.5 s</td><td>Cooldown front_blocked sau escape</td></tr>
+</table>
+
+<h3>EMA Output Smoothing</h3>
+<table>
+    <tr><th>Tham số</th><th>Giá trị</th><th>Mô tả</th></tr>
+    <tr><td><code>alpha_v</code></td><td>0.15</td><td>EMA tốc độ: nhỏ → mượt hơn, trễ hơn</td></tr>
+    <tr><td><code>alpha_s</code></td><td>0.40</td><td>EMA góc lái: giảm về 0.40 để hết chattering (rung vô lăng)</td></tr>
+</table>
+
+<div class="definition">
+    <span class="box-title">📐 Công thức EMA (Exponential Moving Average):</span>
+    $$y_{new} = \alpha \cdot x_{new} + (1 - \alpha) \cdot y_{old}$$
+    <p>Ví dụ với $\alpha_v = 0.15$: lệnh tốc độ mới chỉ đóng góp 15% vào giá trị thực publish. 85% còn lại là giá trị cũ. Kết quả: tín hiệu rất mượt nhưng phản ứng chậm hơn ~6 bước.</p>
+</div>
+
+<h3>MPPI Exploration Noise</h3>
+<table>
+    <tr><th>Tham số</th><th>Giá trị</th><th>Mô tả</th></tr>
+    <tr><td><code>sigma_v</code></td><td>1.5</td><td>Độ lệch chuẩn nhiễu vận tốc (lớn → MPPI khám phá nhiều vận tốc hơn)</td></tr>
+    <tr><td><code>sigma_s</code></td><td>0.20</td><td>Độ lệch chuẩn góc lái (đặt 0.20 để lách êm, tránh trượt lốp)</td></tr>
+</table>
+
+
+<!-- ############################################## -->
+<!-- CH4: HÀNH TRÌNH MỘT VÒNG LẶP                   -->
+<!-- ############################################## -->
+<div class="part-header ph-purple" id="ch4">
+    <h1>Chương 4: Hành trình Một Vòng lặp Điều khiển (control_loop)</h1>
+    <p>Đi theo từng bước trong 15 bước xử lý của vòng lặp 20 Hz</p>
+</div>
+
+<h2 id="c4.1">4.1 Từ Snapshot đến Waypoint</h2>
+
+<div class="step-card">
+    <span class="step-number">4.1</span> <strong>Snapshot thread-safe (dòng 440):</strong>
+    <p>Sao chép toàn bộ pose và obstacles vào biến <strong>local</strong> dưới mutex. Nhờ đó phần còn lại của vòng lặp dùng dữ liệu "chụp lại" ổn định, không bị thay đổi giữa chừng.</p>
+</div>
+
+<div class="step-card">
+    <span class="step-number">4.2</span> <strong>Kiểm tra hợp lệ (dòng 468):</strong>
+    <ul>
+        <li>Không có odom hoặc odom quá 0.5s → <code>publish_drive(0,0)</code> dừng an toàn</li>
+        <li>Pose chứa NaN → cảnh báo và bỏ qua</li>
+    </ul>
+</div>
+
+<div class="step-card">
+    <span class="step-number">4.3</span> <strong>Tìm waypoint gần nhất (dòng 480):</strong>
+    <p>Tìm trong cửa sổ $[-20, +40]$ quanh vị trí lần trước (O(60)) — nhanh hơn quét toàn bộ. Nếu khoảng cách &gt; 5m (teleport) → quét toàn bộ O(N) để "bắt lại" vị trí.</p>
+</div>
+
+<div class="step-card">
+    <span class="step-number">4.4</span> <strong>Xây cửa sổ waypoint cục bộ (dòng 499):</strong>
+    <p>Lấy 80 waypoint quanh nearest_wp, lưu kèm heading và index. MPPI chỉ tìm kiếm trong 80 waypoint này → giảm khối lượng tính toán cost.</p>
+</div>
+
+<h2 id="c4.2">4.2 Corridor Filter &amp; Curvature Profiling</h2>
+
+<div class="step-card">
+    <span class="step-number">4.5</span> <strong>Corridor Filter (dòng 525):</strong>
+    <p>Mỗi điểm LiDAR local → phân loại thành <strong>vật cản</strong> (trong hành lang trước xe) hay <strong>tường</strong> (2 bên/sau). Sau đó transform sang tọa độ map để MPPI mô phỏng. Log thống kê: số tường, số vật cản, khoảng cách vật cản gần nhất.</p>
+</div>
+
+<div class="warning-box">
+    <span class="box-title">⚠️ Cảnh báo tích hợp trong code (Log 5):</span>
+    <p>Nếu hơn 50% điểm LiDAR bị phân loại là <strong>vật cản</strong>, code cảnh báo: <em>"Hãy kiểm tra xem hành lang quét 0.85m có quá rộng?"</em>. Đây là dấu hiệu <code>corridor_half_w</code> đang "nuốt" cả tường 2 bên.</p>
+</div>
+
+<div class="step-card">
+    <span class="step-number">4.6</span> <strong>Curvature Profiling (dòng 562):</strong>
+    <p>Quét 25 waypoint phía trước, lấy độ cong cực đại $\kappa_{max}$. Tính <code>target_v</code> theo công thức ở Chương 3.2.</p>
+</div>
+
+<h2 id="c4.3">4.3 Proactive Decel &amp; Front Blocked</h2>
+
+<div class="step-card">
+    <span class="step-number">4.7</span> <strong>Proactive Deceleration (dòng 574):</strong>
+    <p>Nếu vật cản trước xe ở khoảng cách &lt; 1.5m → giảm <code>target_v</code> theo tỷ lệ tuyến tính, nhưng không giảm dưới 60% tốc độ tối đa. Mục đích: <strong>giảm tốc sớm trước khi MPPI kịp tìm đường né</strong>.</p>
+</div>
+
+<div class="definition">
+    <span class="box-title">📐 Công thức Proactive Decel:</span>
+    $$f = f_{min} + (1 - f_{min}) \cdot \frac{d - d_{min}}{d_{start} - d_{min}}$$
+    $$target\_v = \min(target\_v, \ v_{max} \cdot f)$$
+    <p>Với $d$ = khoảng cách vật cản gần nhất, $d_{start}$ = 1.5m, $d_{min}$ = 0.5m, $f_{min}$ = 0.6.</p>
+</div>
+
+<div class="step-card">
+    <span class="step-number">4.8</span> <strong>Front Blocked Check (dòng 589):</strong>
+    <p>Khoảng cách phanh cần thiết: $d_{brake} = \max(0.8, \frac{v^2}{2a_{max}} + 0.3)$. Quét điểm LiDAR trong vùng <code>[0.1, d_brake] × [−0.3, 0.3]</code>m. Nếu ≥ 3 tia chạm → <code>front_blocked = true</code>.</p>
+</div>
+
+<h2 id="c4.4">4.4 Anti-stuck Watchdog &amp; Escape</h2>
+
+<div class="step-card">
+    <span class="step-number">4.9</span> <strong>Anti-stuck Watchdog (dòng 632):</strong>
+    <p>Điều kiện nghi ngờ kẹt: xe đứng yên (<code>v_cur &lt; 0.05</code>) NHƯNG MPPI đang ra lệnh chạy (<code>cmd_v &gt; 0.3</code>). Bấm giờ 1.0s. Nếu xe vẫn không nhúc nhích → xác nhận <strong>bị kẹt</strong>. Nếu xe trôi lại (&gt; 0.1 m/s) → hủy bộ đếm.</p>
+</div>
+
+<div class="step-card">
+    <span class="step-number">4.10</span> <strong>Emergency Stop &amp; Escape (dòng 656):</strong>
+    <p>Khi <code>front_blocked</code> hoặc <code>is_stuck</code>:</p>
+    <ul>
+        <li>Chuyển <code>is_stopped = true</code>, bấm giờ escape 1.0s</li>
+        <li><strong>Chọn hướng lùi</strong>: né về phía ít vật cản (dựa tổng $dy$ của các tia chạm)</li>
+        <li>Flush toàn bộ horizon: <code>v = -0.8 m/s</code> (lùi), <code>steer</code> theo hướng thoát</li>
+    </ul>
+</div>
+
+<div class="warning-box">
+    <span class="box-title">⚠️ Điểm mấu chốt về Escape:</span>
+    <p>Khác với nhiều controller khác (chỉ dừng và đợi), code này <strong>CHỦ ĐỘNG LÙI XE</strong> với tốc độ <code>-0.8 m/s</code> để ra khỏi vùng nguy hiểm, kèm đánh lái về phía ít vật cản. Sau 1.0s escape: resume + áp dụng cooldown 2.0s (watchdog) và 1.5s (front_blocked) để tránh lặp lại ngay.</p>
+</div>
+
+<h2 id="c4.5">4.5 MPPI Sampling &amp; Cost (OpenMP)</h2>
+
+<div class="step-card">
+    <span class="step-number">4.11</span> <strong>Sinh mẫu ngẫu nhiên (dòng 694):</strong>
+    <p>Sinh $N \times H$ giá trị nhiễu Gaussian: $v \sim \mathcal{N}(0, \sigma_v^2)$, $\delta \sim \mathcal{N}(0, \sigma_s^2)$. Lưu vào <code>noise_buf</code>.</p>
+</div>
+
+<div class="step-card">
+    <span class="step-number">4.12</span> <strong>Tính chi phí song song (dòng 706):</strong>
+    <p><code>#pragma omp parallel for schedule(dynamic) reduction(+:collision_samples)</code> — mỗi thread xử lý một quỹ đạo độc lập. Vì mỗi thread ghi vào slot riêng <code>costs_buf[n]</code> nên không cần mutex. Chi tiết cost ở Chương 5.</p>
+</div>
+
+<h2 id="c4.6">4.6 Weight Update &amp; EMA Smoothing</h2>
+
+<div class="step-card">
+    <span class="step-number">4.13</span> <strong>Weight Update (dòng 783):</strong>
+    <p>Tính trọng số softmax: $w_n = \exp\left(-\frac{c_n - c_{min}}{\lambda}\right)$. Cập nhật <code>nominal_control</code> bằng tổng có trọng số của nhiễu. Nếu <code>w_sum ≈ 0</code> (weight collapse) → giữ nguyên nominal, chỉ clamp.</p>
+</div>
+
+<div class="step-card">
+    <span class="step-number">4.14</span> <strong>EMA Smoothing &amp; Publish (dòng 819):</strong>
+    <p>Làm mượt lệnh đầu tiên của nominal bằng EMA rồi publish lên <code>/drive</code>. Đồng thời publish quỹ đạo tốt nhất lên RViz.</p>
+</div>
+
+<div class="step-card">
+    <span class="step-number">4.15</span> <strong>Shift Horizon (dòng 830):</strong>
+    <p>Dịch toàn bộ <code>nominal_control</code> sang trái 1 bước (receding horizon). Bước cuối: vận tốc = <code>target_v</code>, góc lái = góc lái bước kế × <code>STEER_DECAY_FACTOR (0.5)</code>.</p>
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH5: TOÁN HỌC BÊN TRONG                        -->
+<!-- ############################################## -->
+<div class="part-header ph-teal" id="ch5">
+    <h1>Chương 5: Toán học bên trong — Bicycle Model &amp; Cost Function</h1>
+    <p>Phần lõi: cách xe được mô phỏng và cách quỹ đạo được chấm điểm</p>
+</div>
+
+<h2 id="c5.1">5.1 Mô hình xe đạp (Bicycle Model)</h2>
+
+<div class="definition">
+    <span class="box-title">📐 Công thức cập nhật trạng thái (dòng 724):</span>
+    $$x_{k+1} = x_k + v_k \cos(\theta_k) \cdot \Delta t$$
+    $$y_{k+1} = y_k + v_k \sin(\theta_k) \cdot \Delta t$$
+    $$\theta_{k+1} = \theta_k + \frac{v_k \tan(\delta_k)}{L} \cdot \Delta t$$
+    <p>với $L$ = WHEELBASE, $\delta$ = góc lái, $\Delta t$ = dt (mặc định 0.05s). Góc luôn được chuẩn hóa về $[-\pi, \pi]$.</p>
+</div>
+
+<div class="important-note">
+    <span class="box-title">⚡ Tại sao dùng bicycle model thay vì mô hình phức tạp?</span>
+    <p>MPPI cần mô phỏng 500 quỹ đạo × 30 bước = <strong>15,000 bước</strong> mỗi vòng lặp (20Hz). Mô hình xe đạp là sự cân bằng hoàn hảo giữa <strong>độ chính xác</strong> (đủ mô tả xe F1TENTH ở tốc độ thấp) và <strong>tốc độ tính toán</strong>.</p>
+</div>
+
+<h2 id="c5.2">5.2 Hàm chi phí 6 thành phần</h2>
+
+<div class="theorem">
+    <span class="box-title">🧮 Tổng chi phí của mỗi quỹ đạo mẫu:</span>
+    $$J = \underbrace{w_{track} \cdot J_{track}}_{\text{bám đường}} + \underbrace{w_{heading} \cdot J_{heading}}_{\text{hướng}} + \underbrace{w_{speed} \cdot J_{speed}}_{\text{tốc độ}} + \underbrace{w_{smooth} \cdot J_{smooth}}_{\text{mượt}} + \underbrace{w_{obs} \cdot J_{obs}}_{\text{vật cản}} + \underbrace{J_{terminal}}_{\text{cuối horizon}}$$
+</div>
+
+<table>
+    <tr><th>Thành phần</th><th>Công thức</th><th>Ý nghĩa</th></tr>
+    <tr><td>$J_{track}$</td><td>$\sum_t d_{min}^2(t)$</td><td>Cross-track error: khoảng cách từ xe đến waypoint gần nhất — phạt xe đi chệch đường</td></tr>
+    <tr><td>$J_{heading}$</td><td>$\sum_t \Delta\theta_{err}^2(t)$</td><td>Heading error: lệch hướng so với hướng waypoint — phạt xe đi chéo/xe quay đầu</td></tr>
+    <tr><td>$J_{speed}$</td><td>$\sum_t (v - v_{target})^2$</td><td>Lệch tốc độ so với mục tiêu — phạt xe chạy quá nhanh hoặc quá chậm</td></tr>
+    <tr><td>$J_{smooth}$</td><td>$\sum_t (\delta_t - \delta_{t-1})^2 + (v_t - v_{t-1})^2$</td><td>Độ "giật" giữa các bước — phạt bẻ lái/đổi ga đột ngột (chống rack-rack)</td></tr>
+    <tr><td>$J_{obs}$</td><td>$\sum_t \max(0, r - d)^2$</td><td>Phạt khi vào trong bán kính nguy hiểm vật cản: càng gần càng phạt nặng. Cộng thêm <code>collision_cost</code> nếu $d &lt; 0.2$m</td></tr>
+    <tr><td>$J_{terminal}$</td><td>$1.5(w_{track}d_{min}^2 + w_h\Delta\theta_{err}^2) + w_{prog} \cdot prog$</td><td>Chi phí tại bước cuối (nhân 1.5) + khuyến khích tiến về phía trước</td></tr>
+</table>
+
+<div class="visual-box">
+    <span class="box-title">🎯 Cost Obstacle — hình ảnh trực quan:</span>
+    <pre style="background:transparent;color:inherit;font-size:0.85em;">Chi phí
+    ▲
+    │              ╱╲   ← đỉnh r = 0 tại tâm vật cản, phạt tăng (r−d)²
+    │             ╱  ╲
+    │            ╱    ╲
+    │       ────╱────────╲──────  r_obstacle (biên giới an toàn)
+    ─┴─────────┴──────────┴──────▶ khoảng cách d
+         r      0       r
+    • Trong vòng tròn bán kính r: phạt (r − d)²
+    • Ngoài vòng tròn: cost = 0 (MPPI tự do lựa chọn)
+    • d < 0.2m: cộng thêm collision_cost = 200 (kịch liệt!)</pre>
+</div>
+
+<h2 id="c5.3">5.3 Softmax Weight Update</h2>
+
+<div class="definition">
+    <span class="box-title">📐 Công thức kết hợp quỹ đạo:</span>
+    $$w_n = \exp\left(-\frac{c_n - c_{min}}{\lambda}\right), \qquad u_t = u_t^{nom} + \frac{\sum_n w_n \epsilon_{n,t}}{\sum_n w_n}$$
+    <p>Trong đó $\epsilon_{n,t}$ là nhiễu của mẫu $n$ tại bước $t$. Công thức này khiến:</p>
+    <ul>
+        <li>Quỹ đạo chi phí thấp → trọng số lớn → ảnh hưởng mạnh lên lệnh điều khiển</li>
+        <li>Quỹ đạo chi phí cao → trọng số gần 0 → bị bỏ qua</li>
+        <li>$\lambda$ càng nhỏ → càng "tham lam" theo quỹ đạo tốt nhất</li>
+    </ul>
+</div>
+
+<div class="important-note">
+    <span class="box-title">⚡ Điểm mạnh so với MPC cổ điển:</span>
+    <p>MPPI không cần giải bài toán tối ưu phi tuyến phức tạp (dễ local minimum, khó xử lý ràng buộc). Thay vào đó dùng <strong>lấy mẫu + trọng số</strong> — tự nhiên khám phá toàn cục, dễ song song hóa (OpenMP), và dễ tune.</p>
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH6: AN TOÀN                                  -->
+<!-- ############################################## -->
+<div class="part-header ph-red" id="ch6">
+    <h1>Chương 6: An toàn — Phanh khẩn cấp &amp; Thoát hiểm</h1>
+    <p>3 lớp bảo vệ độc lập với MPPI — để xe không bao giờ đâm</p>
+</div>
+
+<h2 id="c6.1">6.1 Cơ chế Front Blocked</h2>
+
+<div class="ascii-diagram">
+         CỔNG PHANH KHẨN CẤP (nhìn từ trên xuống)
+         ┌──────────────────────────────────┐
+         │                                  │
+         │      ┌───────┐                   │
+         │      │  XE   │ ▲ 0.3m            │
+         │      └───────┘ ▼ 0.3m  ← nguy hiểm │
+         │        0.1m ──────── d_brake     │
+         │        ┌─────────────────┐       │
+         │        │  VÙNG TỬ THẦN    │  ← tia   │
+         │        │  (điểm LiDAR ở   │     trong │
+         │        │   đây → cảnh báo)│     đây   │
+         │        └─────────────────┘       │
+         └──────────────────────────────────┘
+    d_brake = max(0.8m, v²/(2·4.0) + 0.3m)
+    • ≥ 3 tia chạm → front_blocked = TRUE
+</div>
+
+<div class="warning-box">
+    <span class="box-title">⚠️ An toàn độc lập với MPPI:</span>
+    <p>Front Blocked <strong>không chờ MPPI tính toán</strong>. Nó quét trực tiếp điểm LiDAR thô trong hệ tọa độ local của xe — nhanh và chính xác. Đây là tầng an toàn "cứng" giúp phanh ngay cả khi MPPI chưa kịp phản ứng.</p>
+</div>
+
+<h2 id="c6.2">6.2 Escape Maneuver — Lùi xe thông minh</h2>
+
+<div class="step-card">
+    <span class="step-number">1</span> <strong>Phát hiện</strong>: <code>front_blocked</code> hoặc <code>is_stuck</code> kích hoạt</div>
+<div class="step-card">
+    <span class="step-number">2</span> <strong>Chọn hướng thoát</strong>: Tổng $dy$ của các tia chạm dương → vật cản lệch TRÁI → rẽ PHẢI ($\delta = -0.418$). Ngược lại rẽ TRÁI. Không đủ thông tin → rẽ ngẫu nhiên.</div>
+<div class="step-card">
+    <span class="step-number">3</span> <strong>Thực thi</strong>: flush toàn bộ 30 bước horizon với <code>v = -0.8 m/s</code>, steer theo hướng đã chọn</div>
+<div class="step-card">
+    <span class="step-number">4</span> <strong>Resume</strong>: sau 1.0s, trả về điều khiển bình thường, áp cooldown watchdog 2.0s + front_blocked 1.5s</div>
+
+<h2 id="c6.3">6.3 Anti-stuck Watchdog</h2>
+
+<div class="definition">
+    <span class="box-title">🤖 Watchdog hoạt động thế nào?</span>
+    <p>Điều kiện kích hoạt bộ đếm: xe đang chạy chế độ bình thường (<code>!is_stopped</code>), hết cooldown, <code>v_cur &lt; 0.05 m/s</code> (xe đứng yên) nhưng MPPI ra lệnh <code>|cmd_v| &gt; 0.3 m/s</code> (bảo chạy).</p>
+    <ul>
+        <li><strong>Bắt đầu đếm</strong>: log cảnh báo, lưu thời điểm bắt đầu</li>
+        <li><strong>Quá 1.0s</strong>: xác nhận <code>is_stuck = true</code> → vào escape</li>
+        <li><strong>Xe trôi lại</strong> (v_cur &gt; 0.1): hủy bộ đếm, reset</li>
+    </ul>
+    <p>Chờ 1.0s trước khi kết luận giúp tránh <strong>false positive</strong> (vd: xe vừa khởi động, VESC chưa phản hồi).</p>
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH7: LOGGING, DEBUG & VISUALIZATION            -->
+<!-- ############################################## -->
+<div class="part-header ph-blue" id="ch7">
+    <h1>Chương 7: Logging, Debug &amp; Visualization</h1>
+    <p>Khi xe chạy sai, đây là nơi bạn tìm câu trả lời</p>
+</div>
+
+<h2 id="c7.1">7.1 CSV Log chi tiết</h2>
+
+<p>Mỗi vòng lặp ghi một dòng vào file: <code>/home/danh/mppi_logs/mppi_log_YYYYMMDD_HHMMSS.csv</code></p>
+
+<pre><code>time,x,y,theta,v_cur,target_v,steer_cmd,v_cmd,exec_time_ms,
+is_stopped,is_stuck,front_blocked,odom_delay,lidar_delay,
+best_track_cost,best_obs_cost,collision_rate</code></pre>
+
+<table>
+    <tr><th>Cột</th><th>Ý nghĩa</th></tr>
+    <tr><td><code>time, x, y, theta</code></td><td>Thời gian + tư thế xe (map frame)</td></tr>
+    <tr><td><code>v_cur, target_v</code></td><td>Vận tốc thực tế &amp; vận tốc mục tiêu</td></tr>
+    <tr><td><code>steer_cmd, v_cmd</code></td><td>Lệnh publish sau EMA</td></tr>
+    <tr><td><code>exec_time_ms</code></td><td>Thời gian chạy 1 vòng control_loop</td></tr>
+    <tr><td><code>is_stopped, is_stuck, front_blocked</code></td><td>Trạng thái an toàn (0/1)</td></tr>
+    <tr><td><code>odom_delay, lidar_delay</code></td><td>Độ trễ cảm biến (s) — cảnh báo nếu &gt; 0.1s</td></tr>
+    <tr><td><code>best_track_cost, best_obs_cost</code></td><td>Chi phí bám đường &amp; vật cản của quỹ đạo tốt nhất</td></tr>
+    <tr><td><code>collision_rate</code></td><td>% mẫu MPPI bị va chạm trong mô phỏng</td></tr>
+</table>
+
+<div class="important-note">
+    <span class="box-title">💡 Cách dùng CSV log để debug:</span>
+    <p>Mở bằng Python + matplotlib, vẽ <code>x, y</code> để xem đường đi thực tế; vẽ <code>steer_cmd</code> để kiểm tra rack-rack; vẽ <code>collision_rate</code> và <code>best_obs_cost</code> để biết MPPI đang "sợ" bao nhiêu vật cản; vẽ <code>exec_time_ms</code> để phát hiện trễ tính toán.</p>
+</div>
+
+<h2 id="c7.2">7.2 Các dòng log ROS quan trọng</h2>
+
+<table>
+    <tr><th>Log</th><th>Tần suất</th><th>Mô tả</th></tr>
+    <tr><td><code>[LÀM CHẬM HỆ THỐNG]</code></td><td>500ms</td><td>Độ trễ Odom hoặc LiDAR &gt; 0.1s</td></tr>
+    <tr><td><code>Corridor: wall=.. obs=..</code></td><td>500ms</td><td>Thống kê phân loại LiDAR + khoảng cách vật cản trước xe</td></tr>
+    <tr><td><code>[CORRIDOR WARNING]</code></td><td>1s</td><td>&gt; 50% điểm bị coi là vật cản (hành lang quá rộng?)</td></tr>
+    <tr><td><code>Proactive Decel:</code></td><td>200ms</td><td>Đang giảm tốc vì vật cản gần</td></tr>
+    <tr><td><code>[PHANH KHẨN CẤP]</code></td><td>Realtime</td><td>front_blocked xác nhận, kèm số tia + tổng lệch ngang</td></tr>
+    <tr><td><code>[BỎ QUA]</code></td><td>500ms</td><td>&lt; 3 tia chạm → bỏ qua (nhiễu/bóng ma)</td></tr>
+    <tr><td><code>[WATCHDOG...]</code></td><td>Realtime</td><td>Bắt đầu đếm / hủy / kích hoạt bị kẹt</td></tr>
+    <tr><td><code>[ESCAPE DETAIL]</code></td><td>Realtime</td><td>Hướng thoát: rẽ trái/phải + lý do</td></tr>
+    <tr><td><code>[MPPI COST]</code></td><td>1s</td><td>Min/Avg/Max cost của 500 mẫu</td></tr>
+    <tr><td><code>[MPPI DIAG]</code></td><td>1s</td><td>Chi tiết 6 thành phần cost + tỷ lệ va chạm</td></tr>
+    <tr><td><code>[PERF]</code></td><td>500ms</td><td>Thời gian chạy control_loop (ms)</td></tr>
+</table>
+
+<h2 id="c7.3">7.3 Visualization trên RViz</h2>
+
+<table>
+    <tr><th>Marker</th><th>Màu</th><th>Loại</th><th>Mô tả</th></tr>
+    <tr><td>Quỹ đạo tốt nhất</td><td>Xanh lá</td><td>LINE_STRIP</td><td>Dự báo 30 bước tương lai của nominal_control (<code>z=0.05</code>)</td></tr>
+    <tr><td>Toàn bộ waypoints</td><td>Vàng</td><td>POINTS</td><td>Tất cả raceline waypoint, publish 1 lần lúc khởi động</td></tr>
+</table>
+
+
+<!-- ############################################## -->
+<!-- CH8: BUILD, CHẠY & TUNING                      -->
+<!-- ############################################## -->
+<div class="part-header ph-green" id="ch8">
+    <h1>Chương 8: Build, Chạy &amp; Tuning trên xe Thật</h1>
+    <p>Từ compile đến một chiếc xe tự lái an toàn</p>
+</div>
+
+<h2 id="c8.1">8.1 Build &amp; Run</h2>
+
+<pre><code># 1. Build package (từ thư mục workspace)
+cd ~/danh_ws/f1_ws
+colcon build --packages-select mppi_cpp
+
+# 2. Source environment
+source install/setup.bash
+
+# 3. Chạy controller (yêu cầu đã có odom + LiDAR + TF)
+ros2 run mppi_cpp mppi_real_cpp
+
+# 4. Override tham số khi chạy
+ros2 run mppi_cpp mppi_real_cpp --ros-args \
+  -p horizon:=30 \
+  -p num_samples:=500 \
+  -p dt:=0.05
+
+# 5. Xem log CSV
+tail -f ~/mppi_logs/mppi_log_*.csv</code></pre>
+
+<div class="important-note">
+    <span class="box-title">⚡ Lưu ý về tham số ROS:</span>
+    <p>Chỉ 3 tham số ROS được khai báo (<code>horizon</code>, <code>num_samples</code>, <code>dt</code>). Mọi tham số tuning khác (<code>w_obs</code>, <code>lambda_</code>, <code>corridor_half_w</code>...) là <strong>biến C++ hardcode</strong> — muốn đổi phải sửa code và rebuild.</p>
+</div>
+
+<h2 id="c8.2">8.2 Checklist an toàn trước khi chạy</h2>
+
+<ul class="checklist">
+    <li><strong>Waypoint CSV tồn tại</strong> và đúng format (x,y mỗi dòng) — code sẽ <code>RCLCPP_FATAL</code> nếu không mở được</li>
+    <li><strong>Particle Filter đang chạy</strong> và publish <code>/pf/pose/odom</code> ổn định</li>
+    <li><strong>LiDAR quay</strong> và TF laser→base_link tồn tại</li>
+    <li><strong>VESC driver</strong> nhận lệnh <code>/drive</code></li>
+    <li><strong>RViz</strong> đang hiển thị quỹ đạo MPPI (xanh) + waypoint (vàng)</li>
+    <li><strong>Kiểm tra CSV log</strong> đang ghi (có file mới trong ~/mppi_logs)</li>
+    <li><strong>Nâng xe lên</strong> (bánh treo) và kiểm tra phản hồi lái trước khi chạy thật</li>
+</ul>
+
+<h2 id="c8.3">8.3 Bảng triệu chứng — Chẩn đoán &amp; sửa lỗi</h2>
+
+<table>
+    <tr><th>Triệu chứng</th><th>Nguyên nhân có thể</th><th>Cách sửa</th></tr>
+    <tr><td>Xe dừng hẳn khi vào cua</td><td>Curvature profiling quá nhạy, <code>curve_thresh</code> nhỏ</td><td>Tăng <code>curve_thresh</code></td></tr>
+    <tr><td>Xe đâm tường</td><td><code>w_obs</code> quá thấp hoặc <code>r_obstacle</code> quá nhỏ</td><td>Tăng <code>w_obs</code>, tăng <code>r_obstacle</code></td></tr>
+    <tr><td>Vô lăng rung liên tục (rack-rack)</td><td>EMA quá nhạy, noise quá lớn</td><td>Giảm <code>alpha_s</code>, giảm <code>sigma_s</code>, tăng <code>w_smooth</code></td></tr>
+    <tr><td>Xe lắc lư qua lại (weaving)</td><td><code>w_heading</code> quá thấp, bám đường yếu</td><td>Tăng <code>w_heading</code>, tăng <code>w_track</code></td></tr>
+    <tr><td>Xe phanh giật cục không rõ lý do</td><td>Nhiễu LiDAR bóng ma</td><td>Tăng <code>MIN_BLOCKED_COUNT</code>, kiểm tra <code>[DEBUG LiDAR]</code> log</td></tr>
+    <tr><td>Xe không di chuyển dù MPPI ra lệnh</td><td>Bị kẹt vật lý, hoặc VESC không phản hồi</td><td>Xem <code>[WATCHDOG]</code> log, kiểm tra VESC</td></tr>
+    <tr><td>Xe đi chệch mãi sang 1 bên</td><td>Offset vô lăng / heading sai</td><td>Kiểm tra calibration steering + pose</td></tr>
+    <tr><td><code>[CORRIDOR WARNING]</code> xuất hiện</td><td>Hành lang quá rộng, nuốt tường</td><td>Giảm <code>corridor_half_w</code></td></tr>
+    <tr><td>MPPI phản ứng trễ (thấy vật cản mà né muộn)</td><td><code>alpha_v</code> quá nhỏ / noise thấp</td><td>Tăng <code>alpha_v</code>, tăng <code>sigma_s</code></td></tr>
+    <tr><td><code>weight collapse</code> log liên tục</td><td>Cost chênh lệch quá lớn → <code>lambda_</code> nhỏ</td><td>Tăng <code>lambda_</code></td></tr>
+</table>
+
+<h2 id="c8.4">8.4 Quy trình Tuning từng tham số</h2>
+
+<div class="step-card"><span class="step-number">1</span> <strong>Kiểm tra an toàn cơ bản</strong>: bắt đầu với <code>target_speed_max</code> thấp (1.0 m/s), xe nâng lên.</div>
+<div class="step-card"><span class="step-number">2</span> <strong>Tuning bám đường</strong>: tăng <code>w_track</code>/<code>w_heading</code> cho đến khi xe bám raceline mượt trên đường thẳng + cua nhẹ.</div>
+<div class="step-card"><span class="step-number">3</span> <strong>Tuning tốc độ</strong>: tăng <code>target_speed_max</code> dần, quan sát <code>exec_time_ms</code> có đủ nhanh không.</div>
+<div class="step-card"><span class="step-number">4</span> <strong>Tuning né vật cản</strong>: đặt thùng carton trên đường, điều chỉnh <code>w_obs</code> + <code>r_obstacle</code> + <code>corridor_half_w</code>.</div>
+<div class="step-card"><span class="step-number">5</span> <strong>Tuning độ mượt</strong>: giảm <code>alpha_s</code>/<code>sigma_s</code> nếu vô lăng rung, tăng <code>w_smooth</code>.</div>
+<div class="step-card"><span class="step-number">6</span> <strong>Kiểm tra an toàn</strong>: thử tình huống vật cản đột ngột, xem escape có hoạt động đúng không.</div>
+
+<div class="warning-box">
+    <span class="box-title">⚠️ Quy tắc vàng khi tuning xe thật:</span>
+    <p><strong>Chỉ đổi MỘT tham số mỗi lần.</strong> Ghi lại giá trị cũ, thử, quan sát, ghi nhận. Nhìn CSV log để xác nhận (không chỉ bằng mắt thường). Và luôn có tay phanh (kill switch) khi chạy thử!</p>
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH9: MỞ RỘNG                                   -->
+<!-- ############################################## -->
+<div class="part-header ph-purple" id="ch9">
+    <h1>Chương 9: Mở rộng — Sau MPPI cơ bản thì làm gì?</h1>
+    <p>Lộ trình nâng cấp từ phiên bản hiện tại</p>
+</div>
+
+<table>
+    <tr><th>Cấp độ</th><th>Kỹ thuật</th><th>Khi nào cần</th><th>Thay đổi chính</th></tr>
+    <tr><td>Cấp 1 ✅</td><td><strong>MPPI cơ bản + Corridor Filter</strong></td><td>Hiện tại</td><td>MPPI + 3 lớp an toàn + EMA</td></tr>
+    <tr><td>Cấp 2</td><td><strong>Importance Sampling</strong></td><td>Chất lượng quỹ đạo kém khi lái gắt</td><td>Dùng quỹ đạo cũ làm "cross-entropy" để tập trung mẫu quanh vùng tốt</td></tr>
+    <tr><td>Cấp 3</td><td><strong>Speed-adaptive noise</strong></td><td>Nhiễu cố định quá ít ở tốc độ cao</td><td><code>sigma_s</code> tỷ lệ với vận tốc (tiêu chuẩn MPPI)</td></tr>
+    <tr><td>Cấp 4</td><td><strong>Adaptive lambda</strong></td><td>Cost chênh lệch bất thường</td><td>Tự điều chỉnh $\lambda$ theo phân phối cost</td></tr>
+    <tr><td>Cấp 5</td><td><strong>Dynamic obstacles</strong></td><td>Gặp người/xe di chuyển</td><td>Thêm vận tốc vật cản từ <code>scan</code> tracking</td></tr>
+    <tr><td>Cấp 6</td><td><strong>GPU/CUDA parallel</strong></td><td>Cần horizon/samples lớn hơn ở 20Hz+</td><td>Chuyển phần cost sang GPU</td></tr>
+</table>
+
+<div class="important-note">
+    <span class="box-title">💡 Gợi ý cải thiện code ngay:</span>
+    <ul>
+        <li><code>corridor_half_w</code> hiện cố định 0.45m — có thể làm <strong>động theo vận tốc</strong> (chạy nhanh cần hành lang rộng hơn).</li>
+        <li><code>sigma_v</code> hiện 1.5 luôn luân chuyển — cân nhắc giảm khi <code>target_v</code> thấp để tránh lệch không cần thiết.</li>
+        <li>Cost track hiện dùng waypoint gần nhất — có thể chuyển sang <strong>lookahead point</strong> để bám mượt hơn ở cua.</li>
+        <li>Cân nhắc thêm <code>std::clamp</code> cho cả <code>collision_rate</code> log để tránh giá trị ngoài phạm vi.</li>
+    </ul>
+</div>
+
+
+<!-- ===== FOOTER ===== -->
+<div style="background:linear-gradient(135deg,#0f172a,#1e293b);color:white;padding:28px;border-radius:10px;margin:35px 0;text-align:center;">
+    <h2 style="color:#60a5fa;margin-top:0;">🎯 Lời Khuyên Cuối</h2>
+    <p style="color:#e2e8f0;max-width:700px;margin:10px auto;font-size:1.02em;">
+        <strong>MPPI mạnh nhưng không thay được an toàn.</strong> 3 lớp bảo vệ (Proactive Decel → Front Blocked → Escape) chính là thứ cứu chiếc xe của bạn. Luôn <strong>tuning từng tham số một</strong>, dùng CSV log để kiểm chứng, và đừng quên: chiếc xe chỉ đẹp khi nó <strong>không đâm vào tường</strong>!
+    </p>
+</div>
+
+<div style="text-align:center;margin:35px 0;color:var(--text-secondary);font-size:0.9em;">
+    <p>— Hết Hướng Dẫn Thực Chiến MPPI F1TENTH —</p>
+    <p><em>Nhấn "📄 Xuất PDF" ở góc phải dưới để lưu.</em></p>
+</div>
+
+</body>
+</html>

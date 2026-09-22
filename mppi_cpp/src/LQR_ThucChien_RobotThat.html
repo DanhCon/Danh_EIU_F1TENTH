@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hướng Dẫn Thực Chiến LQR — Từ Lý Thuyết đến Robot Thật</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+    window.MathJax = {
+        tex: { inlineMath: [['$','$'],['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']], tags: 'ams' },
+        chtml: { scale: 1 }
+    };
+    </script>
+    <style>
+        :root { --primary:#0f172a; --accent:#2563eb; --bg:#fff; --text:#1e293b; --text-secondary:#475569; --border:#e2e8f0; --shadow:0 4px 6px -1px rgba(0,0,0,0.1); }
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif; font-size:16.5px; line-height:1.85; color:var(--text); background:var(--bg); max-width:920px; margin:0 auto; padding:40px 25px; }
+        .cover-page { text-align:center; padding:50px 20px; border-bottom:3px solid var(--accent); margin-bottom:45px; background:#f8fafc; border-radius:12px; }
+        .cover-page h1 { font-size:2.1em; color:var(--primary); margin-bottom:12px; line-height:1.3; border:none; padding:0; }
+        .cover-page .subtitle { font-size:1.25em; color:var(--accent); font-weight:600; margin-bottom:18px; }
+        .cover-page .tagline { font-size:1em; color:var(--text-secondary); font-style:italic; max-width:720px; margin:0 auto 20px; }
+        .cover-page .meta { font-size:0.93em; color:var(--text-secondary); }
+        h1 { font-size:1.7em; color:var(--primary); margin:42px 0 16px; border-bottom:2px solid var(--accent); padding-bottom:8px; }
+        h2 { font-size:1.28em; color:var(--accent); margin:28px 0 12px; }
+        h3 { font-size:1.1em; color:var(--primary); margin:20px 0 9px; }
+        .part-header { color:white; padding:24px 30px; border-radius:10px; margin:46px 0 24px; box-shadow:var(--shadow); }
+        .part-header h1 { color:white; border:none; margin:0; font-size:1.5em; padding:0; }
+        .part-header p { color:rgba(255,255,255,0.85); margin-top:7px; font-size:1em; }
+        .ph-red { background:linear-gradient(135deg,#991b1b,#ef4444); }
+        .ph-blue { background:linear-gradient(135deg,#1e3a8a,#2563eb); }
+        .ph-green { background:linear-gradient(135deg,#065f46,#10b981); }
+        .ph-orange { background:linear-gradient(135deg,#b45309,#f59e0b); }
+        .ph-purple { background:linear-gradient(135deg,#581c87,#a855f7); }
+        .ph-teal { background:linear-gradient(135deg,#134e4a,#14b8a6); }
+        p { margin:10px 0; text-align:justify; }
+        ul, ol { margin:9px 0 13px 22px; }
+        li { margin:5px 0; }
+        strong { color:#0f172a; font-weight:600; }
+        blockquote { border-left:4px solid var(--accent); background:#f8fafc; padding:13px 17px; margin:16px 0; font-style:italic; color:var(--text-secondary); border-radius:0 8px 8px 0; }
+        .highlight { background:#fef08a; padding:2px 6px; border-radius:4px; font-weight:600; }
+        .definition,.theorem,.important-note,.example-box,.analogy-box,.visual-box,.warning-box { padding:16px 20px; border-radius:8px; margin:17px 0; border-left:5px solid; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+        .definition { background:#eff6ff; border-color:#3b82f6; } .definition .box-title { color:#1d4ed8; }
+        .theorem { background:#faf5ff; border-color:#a855f7; } .theorem .box-title { color:#7e22ce; }
+        .important-note { background:#fffbeb; border-color:#f59e0b; } .important-note .box-title { color:#b45309; }
+        .example-box { background:#f0fdf4; border-color:#22c55e; } .example-box .box-title { color:#15803d; }
+        .analogy-box { background:#fff7ed; border-color:#ea580c; } .analogy-box .box-title { color:#c2410c; }
+        .visual-box { background:#f0f9ff; border-color:#0ea5e9; } .visual-box .box-title { color:#0369a1; }
+        .warning-box { background:#fef2f2; border-color:#ef4444; } .warning-box .box-title { color:#b91c1c; }
+        .box-title { font-weight:700; font-size:1.02em; margin-bottom:9px; display:block; }
+        .step-card { background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid var(--accent); border-radius:6px; padding:13px 17px; margin:11px 0; }
+        .step-number { display:inline-block; background:var(--accent); color:white; padding:2px 10px; border-radius:12px; font-size:0.85em; font-weight:700; margin-right:8px; }
+        table { width:100%; border-collapse:collapse; margin:15px 0; font-size:0.94em; }
+        th, td { border:1px solid var(--border); padding:8px 12px; text-align:left; }
+        th { background:var(--primary); color:white; font-weight:600; }
+        tr:nth-child(even) { background:#f8fafc; }
+        pre { background:#0f172a; color:#f8fafc; padding:15px 18px; border-radius:8px; overflow-x:auto; font-family:"Fira Code",Consolas,Monaco,monospace; font-size:0.86em; line-height:1.5; margin:15px 0; }
+        code { font-family:"Fira Code",Consolas,Monaco,monospace; background:#f1f5f9; padding:2px 5px; border-radius:4px; font-size:0.9em; color:#b91c1c; }
+        pre code { background:transparent; color:inherit; padding:0; }
+        .ascii-diagram { background:#f1f5f9; border:1px solid #cbd5e1; padding:14px 18px; border-radius:8px; font-family:"Fira Code",Consolas,Monaco,monospace; font-size:0.82em; line-height:1.4; white-space:pre; overflow-x:auto; margin:13px 0; color:var(--primary); }
+        .toc { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:20px 26px; margin:24px 0; }
+        .toc h2 { margin-top:0; color:var(--primary); }
+        .toc ul { list-style:none; margin-left:0; }
+        .toc > ul > li { margin:6px 0; font-weight:600; color:var(--primary); }
+        .toc > ul > li > ul > li { font-weight:400; color:var(--text); margin:3px 0; padding-left:18px; }
+        .toc a { color:inherit; text-decoration:none; } .toc a:hover { color:var(--accent); text-decoration:underline; }
+        .checklist { list-style:none; margin-left:0; }
+        .checklist li { padding:4px 0; }
+        .checklist li::before { content:"☐ "; font-size:1.1em; }
+        .print-btn { position:fixed; bottom:30px; right:30px; background:var(--accent); color:white; border:none; padding:12px 22px; border-radius:30px; font-size:0.95em; font-weight:600; cursor:pointer; box-shadow:0 4px 14px rgba(37,99,235,0.4); transition:all 0.2s; z-index:1000; }
+        .print-btn:hover { background:#1d4ed8; transform:translateY(-2px); }
+        @media print { body{padding:15px;font-size:11pt;max-width:100%} .print-btn{display:none} .part-header{page-break-before:always} .definition,.theorem,.example-box,.important-note,.analogy-box,.visual-box,.warning-box,.step-card{break-inside:avoid} }
+    </style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">📄 Xuất PDF</button>
+
+<!-- ===== COVER ===== -->
+<div class="cover-page">
+    <h1>Hướng Dẫn Thực Chiến LQR</h1>
+    <div class="subtitle">TỪ CÔNG THỨC TRÊN GIẤY → ROBOT CÂN BẰNG THẬT TRÊN BÀN</div>
+    <div class="tagline">
+        Tất cả kiến thức mà sách giáo khoa KHÔNG dạy: Chọn phần cứng — Đo thông số thật — Sensor Fusion — Rời rạc hóa — Bão hòa Actuator — Debug &amp; Tuning thực tế — Quy trình triển khai A-Z cho Robot Tự Cân Bằng 2 Bánh
+    </div>
+    <hr style="width:50%;margin:18px auto;border:none;border-top:1px solid #cbd5e1;">
+    <div class="meta">
+        <p><strong>Đối tượng:</strong> Người đã biết lý thuyết LQR, muốn triển khai lên robot thật</p>
+        <p><strong>Project mẫu:</strong> Robot 2 bánh tự cân bằng (Self-Balancing Robot) sử dụng STM32/ESP32 + MPU6050</p>
+    </div>
+</div>
+
+<!-- ===== TOC ===== -->
+<div class="toc">
+    <h2>📋 Mục Lục</h2>
+    <ul>
+        <li><a href="#ch0">Chương 0: Bức tranh Tổng thể — Từ Lý thuyết đến Robot Thật cần gì?</a></li>
+        <li><a href="#ch1">Chương 1: Phần Cứng — Chọn đúng linh kiện</a>
+            <ul>
+                <li><a href="#c1.1">1.1 Vi điều khiển (MCU)</a></li>
+                <li><a href="#c1.2">1.2 Cảm biến IMU (MPU6050/MPU9250)</a></li>
+                <li><a href="#c1.3">1.3 Động cơ &amp; Driver</a></li>
+                <li><a href="#c1.4">1.4 Encoder — Đo vị trí/vận tốc bánh xe</a></li>
+                <li><a href="#c1.5">1.5 Nguồn điện &amp; Khung robot</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch2">Chương 2: Đo Thông số Thật (System Identification) — Lấy $A, B$ từ Robot Thật</a>
+            <ul>
+                <li><a href="#c2.1">2.1 Đo khối lượng, chiều dài, mô-men quán tính</a></li>
+                <li><a href="#c2.2">2.2 Đo hằng số động cơ (Motor Constants)</a></li>
+                <li><a href="#c2.3">2.3 Đo ma sát &amp; Giảm chấn</a></li>
+                <li><a href="#c2.4">2.4 Xây dựng ma trận $A, B$ số thực</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch3">Chương 3: Sensor Fusion — Ước lượng Góc nghiêng Chính xác</a>
+            <ul>
+                <li><a href="#c3.1">3.1 Tại sao không dùng trực tiếp Accelerometer hay Gyroscope?</a></li>
+                <li><a href="#c3.2">3.2 Complementary Filter — Đơn giản &amp; Hiệu quả</a></li>
+                <li><a href="#c3.3">3.3 Kalman Filter — Chính xác Tối ưu</a></li>
+                <li><a href="#c3.4">3.4 So sánh &amp; Khuyến nghị</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch4">Chương 4: Rời rạc hóa — Đưa LQR Liên tục vào Vi điều khiển</a>
+            <ul>
+                <li><a href="#c4.1">4.1 Tại sao phải rời rạc hóa?</a></li>
+                <li><a href="#c4.2">4.2 Chọn chu kỳ lấy mẫu $T_s$</a></li>
+                <li><a href="#c4.3">4.3 Tính $A_d, B_d$ và dùng DLQR</a></li>
+                <li><a href="#c4.4">4.4 Code C thực tế cho Timer Interrupt</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch5">Chương 5: Bão hòa Actuator &amp; Vùng chết Động cơ</a>
+            <ul>
+                <li><a href="#c5.1">5.1 Bão hòa là gì? Tại sao phải xử lý?</a></li>
+                <li><a href="#c5.2">5.2 Vùng chết (Dead Zone) của động cơ DC</a></li>
+                <li><a href="#c5.3">5.3 Kỹ thuật xử lý thực tế</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch6">Chương 6: Tuning $Q, R$ trên Robot Thật — Kỹ năng "Tay nghề"</a>
+            <ul>
+                <li><a href="#c6.1">6.1 Bryson's Rule làm điểm khởi đầu</a></li>
+                <li><a href="#c6.2">6.2 Quy trình Tuning Thực tế 5 bước</a></li>
+                <li><a href="#c6.3">6.3 Bảng triệu chứng — Cách chẩn đoán lỗi</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch7">Chương 7: Debug &amp; Logging — Khi Robot Không Hoạt Động</a>
+            <ul>
+                <li><a href="#c7.1">7.1 Serial Plotter — Vũ khí Debug số 1</a></li>
+                <li><a href="#c7.2">7.2 Checklist Debug hệ thống</a></li>
+                <li><a href="#c7.3">7.3 Các lỗi phổ biến nhất &amp; Cách sửa</a></li>
+            </ul>
+        </li>
+        <li><a href="#ch8">Chương 8: Quy trình Triển khai A-Z — Robot Tự Cân Bằng 2 Bánh</a></li>
+        <li><a href="#ch9">Chương 9: Mở rộng — Sau LQR cơ bản thì học gì?</a></li>
+    </ul>
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH0: BỨC TRANH TỔNG THỂ                       -->
+<!-- ############################################## -->
+<div class="part-header ph-red" id="ch0">
+    <h1>Chương 0: Bức tranh Tổng thể — Lý thuyết vs Thực tế</h1>
+    <p>Tại sao biết công thức rồi mà vẫn không làm được robot thật?</p>
+</div>
+
+<div class="analogy-box">
+    <span class="box-title">🏗️ Ẩn dụ: Biết công thức nấu ăn ≠ Đầu bếp giỏi</span>
+    <p>Bạn biết công thức LQR: $K = R^{-1}B^TP$, giải ARE, lấy Gain $K$, xong! Nhưng khi lên robot thật, bạn sẽ phát hiện:</p>
+    <ul>
+        <li><strong>Ma trận $A, B$ ở đâu ra?</strong> Sách cho sẵn, nhưng robot thật thì bạn phải tự đo từng thông số.</li>
+        <li><strong>Trạng thái $x$ lấy từ đâu?</strong> Cảm biến nhiễu, drift, phải lọc bằng Complementary/Kalman Filter.</li>
+        <li><strong>$u = -Kx$ cho ra số bao nhiêu?</strong> Phải chuyển thành tín hiệu PWM cho động cơ.</li>
+        <li><strong>Động cơ có giới hạn!</strong> Tính ra $u = 200\text{N}$ nhưng động cơ chỉ chịu được $10\text{N}$.</li>
+        <li><strong>Thời gian thực!</strong> Vòng điều khiển phải chạy đúng $T_s = 5\text{ms}$, không sớm không muộn.</li>
+    </ul>
+</div>
+
+<div class="visual-box">
+    <span class="box-title">🗺️ Bản đồ Kiến thức cho 1 Project LQR Thật:</span>
+</div>
+
+<div class="ascii-diagram">
+┌──────────────────────────────────────────────────────────────┐
+│                 QUY TRÌNH TRIỂN KHAI LQR                     │
+│                                                              │
+│  ┌─────────┐    ┌──────────┐    ┌──────────┐    ┌─────────┐ │
+│  │ 1. MÔ   │───▶│ 2. THIẾT │───▶│ 3. MÔ    │───▶│ 4. TRIỂN│ │
+│  │ HÌNH HÓA│    │ KẾ LQR   │    │ PHỎNG    │    │ KHAI HW │ │
+│  └─────────┘    └──────────┘    └──────────┘    └─────────┘ │
+│       │              │              │                │       │
+│  • Đo thông số  • Chọn Q, R   • Python/MATLAB  • Flash MCU │
+│  • Lagrangian   • Giải ARE     • Kiểm tra K     • Đọc IMU  │
+│  • Tuyến tính   • Tính K      • Vẽ đồ thị      • PWM Motor│
+│  • A, B thực                   • Phi tuyến      • Debug    │
+│                                                   • Tuning  │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ KIẾN THỨC BỔ TRỢ (không có trong sách LQR):            │ │
+│  │ • Sensor Fusion (Complementary/Kalman Filter)           │ │
+│  │ • Rời rạc hóa (Discretization, Timer Interrupt)         │ │
+│  │ • Bão hòa Actuator & Dead Zone                          │ │
+│  │ • Serial Plotting & Debug                               │ │
+│  │ • Thiết kế PCB/Cơ khí cơ bản                            │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH1: PHẦN CỨNG                                 -->
+<!-- ############################################## -->
+<div class="part-header ph-blue" id="ch1">
+    <h1>Chương 1: Phần Cứng — Chọn đúng Linh kiện</h1>
+    <p>Danh sách BOM (Bill of Materials) cho Robot Tự Cân Bằng</p>
+</div>
+
+<h2 id="c1.1">1.1 Vi điều khiển (MCU)</h2>
+<table>
+    <tr><th>MCU</th><th>Ưu điểm</th><th>Nhược điểm</th><th>Đề xuất</th></tr>
+    <tr><td><strong>STM32F4</strong> (STM32F411, F407)</td><td>FPU phần cứng, Timer chính xác, DMA, 168MHz</td><td>Cần kinh nghiệm HAL/CubeMX</td><td>⭐ Tốt nhất cho LQR</td></tr>
+    <tr><td><strong>ESP32</strong></td><td>WiFi/BT sẵn, 2 core 240MHz, FPU, Arduino-compatible</td><td>Timer ít chính xác hơn STM32</td><td>Tốt, dễ bắt đầu</td></tr>
+    <tr><td><strong>Arduino Mega/Uno</strong></td><td>Dễ học, cộng đồng lớn</td><td>Không có FPU (tính float cực chậm), 16MHz</td><td>⚠️ Chỉ cho demo đơn giản</td></tr>
+</table>
+
+<div class="important-note">
+    <span class="box-title">⚡ Tại sao cần FPU (Floating Point Unit)?</span>
+    <p>LQR tính toán $u = -Kx$ với phép nhân ma trận số thực. Trên MCU <strong>không có FPU</strong> (Arduino Uno), phép nhân $3.14 \times 2.71$ cần ~50 chu kỳ. Trên MCU <strong>có FPU</strong> (STM32F4), chỉ cần 1 chu kỳ. Với vòng lặp 200Hz (5ms), mỗi micro-giây đều quý giá!</p>
+</div>
+
+<h2 id="c1.2">1.2 Cảm biến IMU (MPU6050 / MPU9250)</h2>
+
+<p><strong>IMU (Inertial Measurement Unit)</strong> là cảm biến then chốt, đo <strong>góc nghiêng $\theta$</strong> và <strong>vận tốc góc $\dot{\theta}$</strong>.</p>
+
+<div class="definition">
+    <span class="box-title">📐 IMU gồm 2 cảm biến bên trong:</span>
+    <ul>
+        <li><strong>Accelerometer (Gia tốc kế):</strong> Đo gia tốc trọng trường $g$. Khi robot nghiêng, thành phần $g$ trên mỗi trục thay đổi → suy ra góc $\theta = \text{atan2}(a_x, a_z)$.</li>
+        <li><strong>Gyroscope (Con quay hồi chuyển):</strong> Đo tốc độ quay $\dot{\theta}$ (rad/s). Tích phân ra góc: $\theta(t) = \theta(0) + \int_0^t \dot{\theta} \, d\tau$.</li>
+    </ul>
+</div>
+
+<div class="warning-box">
+    <span class="box-title">⚠️ Vấn đề chết người của từng cảm biến riêng lẻ:</span>
+    <table>
+        <tr><th>Cảm biến</th><th>Điểm mạnh</th><th>Điểm yếu chết người</th></tr>
+        <tr><td>Accelerometer</td><td>Chính xác lâu dài (không drift)</td><td><strong>Nhiễu rung</strong> cực mạnh khi robot di chuyển (rung động cơ)</td></tr>
+        <tr><td>Gyroscope</td><td>Mượt, ít nhiễu ngắn hạn</td><td><strong>Drift tích lũy</strong>: sau 10 giây, góc "trôi" đi vài độ dù robot đứng yên</td></tr>
+    </table>
+    <p>→ Phải <strong>kết hợp cả hai</strong> bằng Sensor Fusion (Chương 3)!</p>
+</div>
+
+<h2 id="c1.3">1.3 Động cơ &amp; Driver</h2>
+
+<table>
+    <tr><th>Loại động cơ</th><th>Ưu điểm</th><th>Nhược điểm</th><th>Driver phổ biến</th></tr>
+    <tr><td><strong>DC Motor + Encoder</strong></td><td>Phản ứng nhanh, mô-men tốt, giá rẻ</td><td>Cần encoder ngoài, nhiễu EMI</td><td>TB6612FNG, L298N, DRV8833</td></tr>
+    <tr><td><strong>Stepper Motor</strong> (NEMA17)</td><td>Điều khiển vị trí chính xác, không cần encoder</td><td>Chậm hơn DC, rung ở tốc độ thấp</td><td>A4988, DRV8825, TMC2209</td></tr>
+</table>
+
+<h2 id="c1.4">1.4 Encoder — Đo Vị trí/Vận tốc Bánh xe</h2>
+
+<p>Để đo trạng thái $x$ (vị trí xe) và $\dot{x}$ (vận tốc xe), bạn cần <strong>Encoder gắn trên trục động cơ</strong>. Encoder đếm số xung (pulses) khi trục quay → tính ra góc quay → suy ra quãng đường.</p>
+
+$$x = \frac{\text{Số xung} \times 2\pi r}{\text{PPR} \times \text{Tỷ số truyền}}, \quad \dot{x} = \frac{\Delta x}{T_s}$$
+
+<h2 id="c1.5">1.5 Nguồn điện &amp; Khung Robot</h2>
+
+<ul>
+    <li><strong>Pin LiPo 2S-3S</strong> (7.4V - 11.1V): Cung cấp đủ dòng cho động cơ (2-5A).</li>
+    <li><strong>Module giảm áp:</strong> LM2596 hoặc Buck Converter xuống 5V/3.3V nuôi MCU.</li>
+    <li><strong>Khung:</strong> In 3D hoặc acrylic cắt laser. <span class="highlight">Trọng tâm nên đặt CAO</span> (giống cây chổi ngược) để robot nghiêng chậm hơn, bộ điều khiển có thời gian phản ứng.</li>
+</ul>
+
+
+<!-- ############################################## -->
+<!-- CH2: ĐO THÔNG SỐ THẬT                         -->
+<!-- ############################################## -->
+<div class="part-header ph-green" id="ch2">
+    <h1>Chương 2: Đo Thông số Thật (System Identification)</h1>
+    <p>Lấy ma trận $A, B$ từ robot thật — không phải từ sách giáo khoa</p>
+</div>
+
+<h2 id="c2.1">2.1 Đo Khối lượng, Chiều dài, Mô-men Quán tính</h2>
+
+<table>
+    <tr><th>Thông số</th><th>Ký hiệu</th><th>Cách đo</th></tr>
+    <tr><td>Khối lượng bánh xe + đế</td><td>$M$</td><td>Cân điện tử (kg)</td></tr>
+    <tr><td>Khối lượng thân robot</td><td>$m$</td><td>Cân riêng phần thân (kg)</td></tr>
+    <tr><td>Khoảng cách trọng tâm</td><td>$l$</td><td>Treo robot bằng dây, đo từ trục bánh xe đến điểm cân bằng (m)</td></tr>
+    <tr><td>Bán kính bánh xe</td><td>$r$</td><td>Thước đo (m)</td></tr>
+    <tr><td>Mô-men quán tính thân</td><td>$I$</td><td>Công thức gần đúng: $I \approx \frac{1}{3}ml^2$ (thanh đều quay quanh đầu). Hoặc dùng CAD (SolidWorks/Fusion360)</td></tr>
+</table>
+
+<div class="example-box">
+    <span class="box-title">💡 Mẹo đo trọng tâm $l$:</span>
+    <p>Buộc dây vào trục bánh xe, treo ngược robot lên. Đo khoảng cách từ trục bánh xe đến điểm cân bằng tự nhiên. Đó là $l$.</p>
+</div>
+
+<h2 id="c2.2">2.2 Đo Hằng số Động cơ (Motor Constants)</h2>
+
+<div class="step-card">
+    <span class="step-number">Cách 1</span> <strong>Từ Datasheet:</strong>
+    <p>Xem mã động cơ trên nhãn, tìm datasheet của nhà sản xuất. Lấy: Hằng số mô-men $K_t$ (Nm/A), Hằng số EMF $K_e$ (V·s/rad), Điện trở cuộn dây $R_a$ (Ω).</p>
+</div>
+
+<div class="step-card">
+    <span class="step-number">Cách 2</span> <strong>Đo thực nghiệm (khi không có datasheet):</strong>
+    <ul>
+        <li><strong>$R_a$:</strong> Dùng đồng hồ vạn năng đo điện trở 2 cực động cơ (khi không quay).</li>
+        <li><strong>$K_e$:</strong> Quay trục động cơ bằng tay (hoặc động cơ khác) ở tốc độ đã biết $\omega$, đo điện áp hở $V_{emf}$. $K_e = V_{emf} / \omega$.</li>
+        <li><strong>Quan hệ Mô-men — Điện áp:</strong> Cấp điện áp $V$ đã biết, đo tốc độ ổn định $\omega_{ss}$. Lực = $F = \frac{K_t(V - K_e \omega_{ss})}{R_a \cdot r}$.</li>
+    </ul>
+</div>
+
+<h2 id="c2.3">2.3 Đo Ma sát &amp; Giảm chấn</h2>
+
+<p><strong>Thí nghiệm Free Decay (Dao động tự do):</strong> Nghiêng thân robot một góc nhỏ rồi thả. Ghi lại góc $\theta(t)$ (qua IMU + Serial). Từ tốc độ suy giảm biên độ, tính hệ số giảm chấn $b$.</p>
+
+$$b = \frac{2m l}{T} \ln\left(\frac{\theta_1}{\theta_2}\right)$$
+<p>(trong đó $\theta_1, \theta_2$ là 2 đỉnh liên tiếp, $T$ là chu kỳ dao động).</p>
+
+<h2 id="c2.4">2.4 Xây dựng Ma trận $A, B$ Số Thực</h2>
+
+<p>Sau khi đo xong, thay số vào mô hình tuyến tính hóa:</p>
+
+<pre><code>import numpy as np
+from scipy.linalg import solve_continuous_are
+
+# === THÔNG SỐ ĐO ĐƯỢC TỪ ROBOT THẬT ===
+M = 0.85    # Khối lượng đế + 2 bánh (kg) — CÂN ĐƯỢC
+m = 0.35    # Khối lượng thân robot (kg) — CÂN ĐƯỢC
+l = 0.15    # Khoảng cách trọng tâm (m) — TREO DÂY ĐO ĐƯỢC
+r = 0.034   # Bán kính bánh xe (m) — THƯỚC ĐO ĐƯỢC
+g = 9.81
+Kt = 0.02   # Hằng số mô-men motor (Nm/A) — DATASHEET
+Ke = 0.02   # Hằng số EMF (V·s/rad) — DATASHEET
+Ra = 2.5    # Điện trở cuộn dây (Ω) — ĐO BẰNG VOM
+b_fric = 0.01  # Hệ số ma sát — THÍ NGHIỆM FREE DECAY
+
+# === XÂY DỰNG MA TRẬN A, B ===
+# (Từ phương trình tuyến tính hóa con lắc ngược)
+A = np.array([
+    [0, 1, 0, 0],
+    [0, -b_fric/M, -m*g/M, 0],
+    [0, 0, 0, 1],
+    [0, b_fric/(M*l), (M+m)*g/(M*l), 0]
+])
+
+B = np.array([
+    [0],
+    [Kt/(Ra*r*M)],
+    [0],
+    [-Kt/(Ra*r*M*l)]
+])
+
+print("Ma trận A (SỐ THẬT TỪ ROBOT):")
+print(np.round(A, 4))
+print("\nMa trận B (SỐ THẬT TỪ ROBOT):")
+print(np.round(B, 4))
+</code></pre>
+
+
+<!-- ############################################## -->
+<!-- CH3: SENSOR FUSION                             -->
+<!-- ############################################## -->
+<div class="part-header ph-orange" id="ch3">
+    <h1>Chương 3: Sensor Fusion — Ước lượng Góc Nghiêng Chính xác</h1>
+    <p>Kỹ năng QUAN TRỌNG NHẤT khi triển khai LQR trên robot thật</p>
+</div>
+
+<h2 id="c3.1">3.1 Tại sao không dùng trực tiếp 1 cảm biến?</h2>
+
+<div class="analogy-box">
+    <span class="box-title">👴👶 Ẩn dụ: Ông Nội + Cháu Nhỏ</span>
+    <ul>
+        <li><strong>Accelerometer = Ông Nội:</strong> Nói chậm, ổn định, đáng tin lâu dài. Nhưng tay run (nhiễu rung) khi đi đường xóc.</li>
+        <li><strong>Gyroscope = Cháu Nhỏ:</strong> Nhanh nhạy, phản ứng tức thì. Nhưng hay bịa chuyện (drift) — mỗi giây "bịa" thêm 0.1° và sau 1 phút đã sai 6°!</li>
+    </ul>
+    <p><strong>Giải pháp:</strong> Kết hợp cả hai! Tin Ông Nội ở thông tin dài hạn, tin Cháu ở thông tin ngắn hạn.</p>
+</div>
+
+<h2 id="c3.2">3.2 Complementary Filter — Đơn giản &amp; Hiệu quả</h2>
+
+<div class="definition">
+    <span class="box-title">📐 Công thức (chỉ 1 dòng code!):</span>
+    $$\theta_{\text{fused}} = \alpha \cdot (\theta_{\text{prev}} + \dot{\theta}_{\text{gyro}} \cdot T_s) + (1 - \alpha) \cdot \theta_{\text{accel}}$$
+    <p>Trong đó $\alpha \approx 0.98$ (thường dùng). Nghĩa là: <strong>98% tin Gyroscope</strong> (nhanh, mượt) + <strong>2% tin Accelerometer</strong> (chống drift).</p>
+</div>
+
+<pre><code>// === COMPLEMENTARY FILTER — Code C cho STM32/ESP32 ===
+#define ALPHA 0.98f
+#define Ts    0.005f  // 5ms = 200Hz
+
+float theta = 0.0f;  // Góc ước lượng (rad)
+
+void control_loop_ISR(void) {
+    // 1. Đọc IMU
+    float accel_x = read_accel_x();  // m/s^2
+    float accel_z = read_accel_z();  // m/s^2
+    float gyro_y  = read_gyro_y();   // rad/s
+
+    // 2. Tính góc từ accelerometer
+    float theta_accel = atan2f(accel_x, accel_z);
+
+    // 3. Complementary Filter (CHỈ 1 DÒNG!)
+    theta = ALPHA * (theta + gyro_y * Ts) + (1.0f - ALPHA) * theta_accel;
+
+    // 4. theta giờ là góc nghiêng ước lượng chính xác!
+}
+</code></pre>
+
+<h2 id="c3.3">3.3 Kalman Filter — Chính xác Tối ưu</h2>
+
+<p>Kalman Filter phức tạp hơn nhưng cho kết quả tốt hơn (đặc biệt khi robot rung mạnh). Bạn đã học chi tiết trong tài liệu <a href="Kalman_Filter_ToanTap.html">Kalman Filter Toàn Tập</a>.</p>
+
+<h2 id="c3.4">3.4 So sánh &amp; Khuyến nghị</h2>
+
+<table>
+    <tr><th></th><th>Complementary Filter</th><th>Kalman Filter</th></tr>
+    <tr><td><strong>Độ khó code</strong></td><td>⭐ (1 dòng code)</td><td>⭐⭐⭐ (20+ dòng ma trận)</td></tr>
+    <tr><td><strong>Tài nguyên CPU</strong></td><td>Rất ít</td><td>Vừa phải (có nhân ma trận)</td></tr>
+    <tr><td><strong>Chất lượng</strong></td><td>Tốt (đủ dùng 90% project)</td><td>Rất tốt (tối ưu thống kê)</td></tr>
+    <tr><td><strong>Tham số tuning</strong></td><td>1 ($\alpha$)</td><td>2+ ($Q_w, R_v$)</td></tr>
+    <tr><td><strong>Khuyến nghị</strong></td><td><span class="highlight">Bắt đầu với cái này!</span></td><td>Nâng cấp khi cần chính xác hơn</td></tr>
+</table>
+
+
+<!-- ############################################## -->
+<!-- CH4: RỜI RẠC HÓA                              -->
+<!-- ############################################## -->
+<div class="part-header ph-purple" id="ch4">
+    <h1>Chương 4: Rời rạc hóa — Đưa LQR Liên tục vào Vi điều khiển</h1>
+    <p>Từ $\dot{x} = Ax + Bu$ (liên tục) sang $x[k+1] = A_d x[k] + B_d u[k]$ (rời rạc)</p>
+</div>
+
+<h2 id="c4.1">4.1 Tại sao phải Rời rạc hóa?</h2>
+
+<p>Lý thuyết LQR liên tục giả định bộ điều khiển cập nhật $u(t)$ <strong>liên tục mọi lúc</strong>. Nhưng vi điều khiển chỉ tính toán <strong>rời rạc, từng bước</strong> mỗi $T_s$ giây (ví dụ 5ms). Nếu $T_s$ quá lớn, hệ rời rạc sẽ hành xử khác hẳn hệ liên tục → mất ổn định!</p>
+
+<h2 id="c4.2">4.2 Chọn Chu kỳ Lấy mẫu $T_s$</h2>
+
+<div class="important-note">
+    <span class="box-title">⚡ Quy tắc Ngón tay Cái:</span>
+    $$T_s \le \frac{1}{10 \cdot |\lambda_{\max}|}$$
+    <p>Trong đó $|\lambda_{\max}|$ là trị riêng có biên độ lớn nhất của $A$. Ví dụ: con lắc ngược có $\lambda \approx \pm 7$ → $T_s \le \frac{1}{70} \approx 14\text{ms}$. Thực tế nên chọn $T_s = 5\text{ms}$ (200Hz) để an toàn.</p>
+</div>
+
+<table>
+    <tr><th>$T_s$</th><th>Tần số</th><th>Phù hợp cho</th></tr>
+    <tr><td>1ms</td><td>1000Hz</td><td>Hệ cực nhanh (quadcopter, servo)</td></tr>
+    <tr><td><strong>5ms</strong></td><td><strong>200Hz</strong></td><td><strong>Robot tự cân bằng (Khuyến nghị!)</strong></td></tr>
+    <tr><td>10ms</td><td>100Hz</td><td>Hệ chậm hơn (xe di chuyển)</td></tr>
+    <tr><td>50ms</td><td>20Hz</td><td>⚠️ Quá chậm cho cân bằng!</td></tr>
+</table>
+
+<h2 id="c4.3">4.3 Tính $A_d, B_d$ và dùng DLQR</h2>
+
+<pre><code>import numpy as np
+from scipy.linalg import expm, solve_discrete_are
+
+Ts = 0.005  # 5ms
+
+# Rời rạc hóa bằng ZOH (Zero-Order Hold) — CHÍNH XÁC
+n = A.shape[0]
+m_input = B.shape[1]
+
+# Xây dựng ma trận mở rộng
+M_ext = np.zeros((n + m_input, n + m_input))
+M_ext[:n, :n] = A * Ts
+M_ext[:n, n:] = B * Ts
+exp_M = expm(M_ext)
+
+Ad = exp_M[:n, :n]        # Ma trận A rời rạc
+Bd = exp_M[:n, n:]        # Ma trận B rời rạc
+
+# Giải DLQR (Discrete LQR)
+Q = np.diag([10.0, 1.0, 150.0, 1.0])  # Phạt góc θ nặng nhất
+R = np.array([[0.1]])
+
+P = solve_discrete_are(Ad, Bd, Q, R)
+K = np.linalg.inv(R + Bd.T @ P @ Bd) @ (Bd.T @ P @ Ad)
+
+print("K (Gain rời rạc) =", np.round(K, 4))
+</code></pre>
+
+<h2 id="c4.4">4.4 Code C Thực tế cho Timer Interrupt</h2>
+
+<pre><code>// === LQR Controller trong Timer ISR — STM32/ESP32 ===
+// Chạy mỗi 5ms (200Hz) trong Timer Interrupt
+
+const float K[4] = {-3.16, -2.45, -38.73, -5.12};  // Gain từ Python DLQR
+const float PWM_MAX = 255.0f;
+
+void TIM2_IRQHandler(void) {
+    // 1. Đọc trạng thái x = [pos, vel, theta, omega]
+    float pos   = encoder_get_position();   // Từ encoder (m)
+    float vel   = encoder_get_velocity();   // Δpos/Ts (m/s)
+    float theta = complementary_filter();   // Từ Sensor Fusion (rad)
+    float omega = gyro_get_rate();          // Từ gyroscope (rad/s)
+
+    // 2. Tính u = -K * x (nhân ma trận 1x4 * 4x1 = vô hướng)
+    float u = -(K[0]*pos + K[1]*vel + K[2]*theta + K[3]*omega);
+
+    // 3. Giới hạn bão hòa (Chương 5)
+    if (u >  PWM_MAX) u =  PWM_MAX;
+    if (u < -PWM_MAX) u = -PWM_MAX;
+
+    // 4. Xử lý Dead Zone (Chương 5)
+    float deadzone = 30.0f;  // PWM tối thiểu để motor quay
+    if (u > 0) u += deadzone;
+    else if (u < 0) u -= deadzone;
+
+    // 5. Gửi tín hiệu PWM cho motor driver
+    motor_set_pwm(u);
+}
+</code></pre>
+
+
+<!-- ############################################## -->
+<!-- CH5: BÃO HÒA & DEAD ZONE                      -->
+<!-- ############################################## -->
+<div class="part-header ph-red" id="ch5">
+    <h1>Chương 5: Bão hòa Actuator &amp; Vùng chết Động cơ</h1>
+    <p>2 vấn đề thực tế mà sách LQR KHÔNG nói</p>
+</div>
+
+<h2 id="c5.1">5.1 Bão hòa (Saturation) là gì?</h2>
+
+<div class="analogy-box">
+    <span class="box-title">🚗 Ẩn dụ:</span>
+    <p>LQR tính ra "cần đạp ga 200%" nhưng chân ga chỉ đạp tối đa 100%. Đó là <strong>bão hòa</strong>. Khi bão hòa, robot không thể phản ứng đủ nhanh → mất ổn định.</p>
+</div>
+
+<h2 id="c5.2">5.2 Vùng chết (Dead Zone) của Động cơ DC</h2>
+
+<p>Nếu bạn gửi PWM = 10/255 cho động cơ, <strong>nó KHÔNG quay!</strong> Vì lực quá yếu, không thắng được ma sát tĩnh. Phải PWM $\ge$ 30-50 mới bắt đầu quay. Khoảng PWM 0-30 gọi là <strong>Vùng chết</strong>.</p>
+
+<h2 id="c5.3">5.3 Kỹ thuật Xử lý Thực tế</h2>
+
+<div class="ascii-diagram">
+u (lý thuyết LQR)                  u_actual (gửi cho motor)
+       ↑                                    ↑
+   +200|──────                          +255|─────── (bão hòa)
+       |     ╲                              |     ╲
+       |      ╲                         +30 |......╲ (bù dead zone)
+       |       ╲                            |       |
+  ─────|────────╲─────→ x          ────────|────────|─────→ x
+       |         ╲                          |       |
+       |          ╲                     -30 |......╱
+       |           ╲                        |     ╱
+   -200|────────────                    -255|─────── (bão hòa)
+</div>
+
+
+<!-- ############################################## -->
+<!-- CH6: TUNING Q, R                               -->
+<!-- ############################################## -->
+<div class="part-header ph-teal" id="ch6">
+    <h1>Chương 6: Tuning $Q, R$ trên Robot Thật</h1>
+    <p>Kỹ năng "tay nghề" — Sách không dạy được, phải tự trải nghiệm</p>
+</div>
+
+<h2 id="c6.1">6.1 Bryson's Rule làm Điểm khởi đầu</h2>
+
+$$Q_{ii} = \frac{1}{(\text{sai lệch tối đa cho phép của } x_i)^2}, \quad R_{jj} = \frac{1}{(\text{lực tối đa cho phép của } u_j)^2}$$
+
+<div class="example-box">
+    <span class="box-title">🔢 Ví dụ cho Robot Tự Cân Bằng:</span>
+    <ul>
+        <li>$x_1$ (vị trí): Cho phép lệch tối đa 0.5m → $Q_{11} = 1/0.5^2 = 4$</li>
+        <li>$x_2$ (vận tốc): Cho phép tối đa 1 m/s → $Q_{22} = 1$</li>
+        <li>$x_3$ (góc $\theta$): Cho phép lệch tối đa $5° \approx 0.087$ rad → $Q_{33} = 1/0.087^2 \approx 132$</li>
+        <li>$x_4$ (tốc độ góc): Cho phép tối đa 2 rad/s → $Q_{44} = 0.25$</li>
+        <li>$u$ (điện áp): Tối đa 12V → $R = 1/12^2 \approx 0.007$</li>
+    </ul>
+</div>
+
+<h2 id="c6.2">6.2 Quy trình Tuning Thực tế 5 Bước</h2>
+
+<div class="step-card"><span class="step-number">1</span> <strong>Bắt đầu với Bryson's Rule</strong>. Tính K, nạp vào MCU, giữ robot bằng tay và từ từ thả ra.</div>
+<div class="step-card"><span class="step-number">2</span> <strong>Quan sát góc $\theta$:</strong> Nếu robot ngã ngay → Tăng $Q_{33}$ (phạt góc nặng hơn). Nếu $\theta$ dao động → Giảm $Q_{33}$ hoặc tăng $R$.</div>
+<div class="step-card"><span class="step-number">3</span> <strong>Quan sát vị trí $x$:</strong> Nếu robot giữ thẳng nhưng trôi đi xa → Tăng $Q_{11}$ (phạt vị trí nặng hơn).</div>
+<div class="step-card"><span class="step-number">4</span> <strong>Lắng nghe motor:</strong> Nếu motor kêu ré, rung liên tục → $R$ quá nhỏ (bộ điều khiển dùng lực quá hung hãn). Tăng $R$ lên.</div>
+<div class="step-card"><span class="step-number">5</span> <strong>Lặp lại</strong> cho đến khi robot cân bằng mượt mà, không dao động, không trôi.</div>
+
+<h2 id="c6.3">6.3 Bảng Triệu chứng — Cách Chẩn đoán Lỗi</h2>
+
+<table>
+    <tr><th>Triệu chứng</th><th>Nguyên nhân có thể</th><th>Cách sửa</th></tr>
+    <tr><td>Robot ngã ngay lập tức</td><td>$K$ quá nhỏ, hoặc dấu $K$ bị ngược</td><td>Kiểm tra dấu $u$. Tăng $Q_{33}$ (góc)</td></tr>
+    <tr><td>Robot dao động qua lại liên tục</td><td>$K$ quá lớn (phản ứng quá mạnh)</td><td>Tăng $R$ (giảm "hung hãn")</td></tr>
+    <tr><td>Robot giữ thẳng nhưng trôi dần</td><td>Thiếu phạt vị trí $x$</td><td>Tăng $Q_{11}$</td></tr>
+    <tr><td>Motor kêu ré, nóng bất thường</td><td>$R$ quá nhỏ, bão hòa liên tục</td><td>Tăng $R$, kiểm tra dead zone</td></tr>
+    <tr><td>Robot ổn định nhưng rung nhẹ ở vị trí đứng</td><td>Nhiễu cảm biến khuếch đại qua $K$</td><td>Cải thiện Sensor Fusion ($\alpha$), lọc thêm</td></tr>
+    <tr><td>Robot nghiêng một bên dù code đúng</td><td>Trọng tâm lệch, hoặc offset IMU</td><td>Calibrate IMU offset, điều chỉnh cơ khí</td></tr>
+</table>
+
+
+<!-- ############################################## -->
+<!-- CH7: DEBUG                                     -->
+<!-- ############################################## -->
+<div class="part-header ph-blue" id="ch7">
+    <h1>Chương 7: Debug &amp; Logging — Khi Robot Không Hoạt Động</h1>
+    <p>Kỹ năng sống còn — 80% thời gian project là debug</p>
+</div>
+
+<h2 id="c7.1">7.1 Serial Plotter — Vũ khí Debug số 1</h2>
+
+<p>In ra Serial các giá trị $\theta, \dot{\theta}, x, u$ theo thời gian thực, rồi dùng <strong>Arduino Serial Plotter</strong> hoặc <strong>Python + matplotlib</strong> để vẽ đồ thị real-time.</p>
+
+<pre><code>// In ra Serial mỗi 5ms (dùng Arduino Serial Plotter)
+Serial.print(theta * 57.3);  // Góc (độ)
+Serial.print(",");
+Serial.print(omega);         // Tốc độ góc (rad/s)
+Serial.print(",");
+Serial.print(u);             // Lực điều khiển
+Serial.println();
+</code></pre>
+
+<h2 id="c7.2">7.2 Checklist Debug Hệ thống</h2>
+
+<p>Khi robot không hoạt động, kiểm tra <strong>TỪNG TẦNG</strong> một:</p>
+
+<ul class="checklist">
+    <li><strong>Tầng 1: Cảm biến</strong> — IMU có đọc đúng không? Nghiêng 90° thì $\theta$ có bằng $\pi/2$ không?</li>
+    <li><strong>Tầng 2: Sensor Fusion</strong> — Complementary Filter có mượt không? Có drift không?</li>
+    <li><strong>Tầng 3: Encoder</strong> — Quay bánh xe 1 vòng, encoder đếm đúng PPR xung không?</li>
+    <li><strong>Tầng 4: Motor</strong> — Gửi PWM = 128, motor có quay không? Chiều quay có đúng không?</li>
+    <li><strong>Tầng 5: Dấu $u$</strong> — Khi robot nghiêng PHẢI, motor có chạy sang PHẢI không? (Nếu ngược = sai dấu!)</li>
+    <li><strong>Tầng 6: K</strong> — In $u = -Kx$ ra Serial, giá trị có hợp lý không? (|u| ~ 50-200 khi nghiêng 5°)</li>
+    <li><strong>Tầng 7: Timing</strong> — Vòng lặp có đúng $T_s$ không? Dùng oscilloscope hoặc toggle GPIO để kiểm tra.</li>
+</ul>
+
+<h2 id="c7.3">7.3 Các Lỗi Phổ biến nhất &amp; Cách sửa</h2>
+
+<table>
+    <tr><th>#</th><th>Lỗi</th><th>Hậu quả</th><th>Cách sửa</th></tr>
+    <tr><td>1</td><td><strong>Sai dấu motor</strong></td><td>Robot đẩy hướng ngã thay vì cứu</td><td>Đổi dấu $u$ hoặc đổi dây motor</td></tr>
+    <tr><td>2</td><td><strong>Sai đơn vị</strong> (° vs rad)</td><td>$K$ sai nghiêm trọng</td><td>Thống nhất tất cả sang radian</td></tr>
+    <tr><td>3</td><td><strong>Không xử lý Dead Zone</strong></td><td>Robot rung nhẹ liên tục ở vị trí đứng</td><td>Thêm code bù Dead Zone (Chương 5)</td></tr>
+    <tr><td>4</td><td><strong>$T_s$ không ổn định</strong></td><td>Hệ hành xử thất thường</td><td>Dùng Timer Interrupt, KHÔNG dùng <code>delay()</code></td></tr>
+    <tr><td>5</td><td><strong>Không calibrate IMU offset</strong></td><td>Robot nghiêng 1 bên dù đặt thẳng</td><td>Đo offset khi robot đứng yên, trừ đi trong code</td></tr>
+    <tr><td>6</td><td><strong>$A, B$ sai (thông số đo không chính xác)</strong></td><td>$K$ tối ưu cho robot "giả", không phải robot thật</td><td>Đo lại thông số, hoặc tuning $Q, R$ trên robot thật</td></tr>
+</table>
+
+
+<!-- ############################################## -->
+<!-- CH8: QUY TRÌNH A-Z                             -->
+<!-- ############################################## -->
+<div class="part-header ph-green" id="ch8">
+    <h1>Chương 8: Quy trình Triển khai A-Z</h1>
+    <p>Checklist hoàn chỉnh cho Robot Tự Cân Bằng 2 Bánh</p>
+</div>
+
+<div class="step-card"><span class="step-number">Tuần 1</span> <strong>Lắp ráp Phần cứng</strong>
+<ul><li>Lắp khung, gắn motor + encoder, gắn IMU, nối dây driver</li><li>Test riêng: motor quay, IMU đọc, encoder đếm</li></ul></div>
+
+<div class="step-card"><span class="step-number">Tuần 2</span> <strong>Sensor Fusion + Calibrate</strong>
+<ul><li>Viết code đọc MPU6050 (I2C)</li><li>Implement Complementary Filter</li><li>In $\theta$ ra Serial Plotter, kiểm tra mượt + không drift</li><li>Calibrate offset IMU</li></ul></div>
+
+<div class="step-card"><span class="step-number">Tuần 3</span> <strong>Đo thông số + Mô phỏng Python</strong>
+<ul><li>Cân $M, m$, đo $l, r$, đo hằng số motor</li><li>Xây $A, B$ trong Python</li><li>Chọn $Q, R$ (Bryson's Rule), giải LQR → lấy $K$</li><li>Mô phỏng bằng <code>solve_ivp</code>, xác nhận hệ ổn định trong simulation</li></ul></div>
+
+<div class="step-card"><span class="step-number">Tuần 4</span> <strong>Nạp code LQR lên MCU</strong>
+<ul><li>Viết Timer ISR 200Hz</li><li>Implement $u = -Kx$ + Dead Zone + Saturation</li><li>Giữ robot bằng tay, xem $u$ trên Serial Plotter có hợp lý không</li><li>Từ từ thả tay, quan sát</li></ul></div>
+
+<div class="step-card"><span class="step-number">Tuần 5</span> <strong>Tuning + Debug</strong>
+<ul><li>Tuning $Q, R$ theo Bảng triệu chứng (Chương 6)</li><li>Debug theo Checklist (Chương 7)</li><li>Quay video kết quả, so sánh với simulation</li></ul></div>
+
+
+<!-- ############################################## -->
+<!-- CH9: MỞ RỘNG                                   -->
+<!-- ############################################## -->
+<div class="part-header ph-purple" id="ch9">
+    <h1>Chương 9: Mở rộng — Sau LQR Cơ bản thì Học gì?</h1>
+    <p>Lộ trình phát triển kỹ năng điều khiển robot</p>
+</div>
+
+<table>
+    <tr><th>Cấp độ</th><th>Kỹ thuật</th><th>Khi nào cần</th><th>Ứng dụng</th></tr>
+    <tr><td>Cấp 1 ✅</td><td><strong>LQR Liên tục + Complementary Filter</strong></td><td>Project đầu tiên</td><td>Robot cân bằng cơ bản</td></tr>
+    <tr><td>Cấp 2</td><td><strong>DLQR + Kalman Filter (LQG)</strong></td><td>Robot rung nhiều, cần chính xác hơn</td><td>Robot cân bằng nâng cao</td></tr>
+    <tr><td>Cấp 3</td><td><strong>LQR Tracking + Integral Action</strong></td><td>Robot cần bám theo quỹ đạo, chống offset</td><td>Line following, xe tự lái</td></tr>
+    <tr><td>Cấp 4</td><td><strong>iLQR / MPC (Model Predictive Control)</strong></td><td>Hệ phi tuyến mạnh, có ràng buộc</td><td>Robot 2 chân, Drone</td></tr>
+    <tr><td>Cấp 5</td><td><strong>Reinforcement Learning + LQR</strong></td><td>Khi mô hình quá phức tạp để viết tay</td><td>Robot học đi, manipulation</td></tr>
+</table>
+
+
+<!-- ===== FOOTER ===== -->
+<div style="background:linear-gradient(135deg,#0f172a,#1e293b);color:white;padding:28px;border-radius:10px;margin:35px 0;text-align:center;">
+    <h2 style="color:#60a5fa;margin-top:0;">🎯 Lời Khuyên Cuối</h2>
+    <p style="color:#e2e8f0;max-width:700px;margin:10px auto;font-size:1.02em;">
+        <strong>Không có project LQR nào hoạt động ngay lần đầu.</strong> 80% thời gian là debug, tuning, và sửa lỗi cơ khí. Hãy kiên nhẫn, debug từng tầng một (Cảm biến → Fusion → Motor → Dấu u → K → Timing), và luôn <strong>mô phỏng trước, triển khai sau</strong>!
+    </p>
+</div>
+
+<div style="text-align:center;margin:35px 0;color:var(--text-secondary);font-size:0.9em;">
+    <p>— Hết Hướng Dẫn Thực Chiến LQR —</p>
+    <p><em>Nhấn "📄 Xuất PDF" ở góc phải dưới để lưu.</em></p>
+</div>
+
+</body>
+</html>
